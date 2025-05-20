@@ -52,7 +52,7 @@ set(EXERCISES
     # ExemplosMoodle/M5_material/exemplo_05
     HelloTriangle
     HelloTransform
-    Exercicio1
+    Exercicio1/parte1
     VivencialTriangulos
     HelloTexture
     Modulo2/Ex1Parte1M2

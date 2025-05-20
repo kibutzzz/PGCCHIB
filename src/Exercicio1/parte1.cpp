@@ -16,23 +16,10 @@ void setupGlad();
 void setViewportDimensions(GLFWwindow *window);
 void assertProgramLinkingStatus(GLuint shaderProgram);
 void assertShaderCompilationStatus(GLuint shader);
-void cursorCallback(GLFWwindow* window, double xpos, double ypos);
 
 int createShaderProgram();
 void drawTriangle(GLuint VAO, GLint colorLoc, float r, float g, float b);
 GLFWwindow *makeWindow(int width, int height, const char *title);
-// Crie uma estrutura (struct ou classe) chamada Triangle que armazene:
-
-//  A posição do triângulo (x, y);
-//  A cor do triângulo (componentes RGB).
-// Utilizando a função criada anteriormente, gere um único VAO para um triângulo padrão com os seguintes vértices:  v0(-0.1, -0.1),   v1(0.1, -0.1),  v2(0.0, 0.1)
-
-// Usando um array, vector ou list de estruturas Triangle e o VAO criado, o programa deverá criar novos triângulos posicionados a partir do clique do mouse na tela. A cor de cada triângulo deve variar, sorteando-se valores para as componentes RGB da cor.
-struct Triangle
-{
-    float x, y;
-    float r, g, b;
-};
 
 int main()
 {
@@ -42,7 +29,6 @@ int main()
 
     GLFWwindow *window = makeWindow(WIDTH, HEIGHT, WINDOW_TITLE);
     glfwMakeContextCurrent(window);
-    glfwSetCursorPosCallback(window, cursorCallback);
 
     setupGlad();
     setViewportDimensions(window);
@@ -52,14 +38,12 @@ int main()
     glUseProgram(shaderId);
 
     GLuint triangles[5];
-    for (int i = 0; i < 5; i++)
-    {
-        float position = i / 5.0f - 0.4f;
-        triangles[i] = createSmallTriangle(position, position);
-    }
+    triangles[0] = createTriangle(-0.9f, -0.9f, -0.8f, -0.7f, -0.7f, -0.9f);
+    triangles[1] = createTriangle(-0.5f, -0.7f, -0.4f, -0.5f, -0.3f, -0.7f);
+    triangles[2] = createTriangle(0.1f, 0.7f, 0.2f, 0.5f, 0.3f, 0.7f);
+    triangles[3] = createTriangle(0.5f, 0.7f, 0.6f, 0.5f, 0.7f, 0.7f);
+    triangles[4] = createTriangle(0.9f, -0.5f, 0.5f, 0.2f, 0.0f, -0.9f);
 
-    GLuint defaultTriangle = createTriangle(-0.1f, -0.1f, 0.1f, -0.1f, 0.0f, 0.1f);
-    //                                   v0(-0.1, -0.1),v1(0.1, -0.1), v2(0.0, 0.1)
 
     while (!glfwWindowShouldClose(window))
     {
@@ -70,8 +54,6 @@ int main()
 
         glLineWidth(10);
         glPointSize(20);
-
-        drawTriangle(defaultTriangle, colorLoc, 1.0f, 0.0f, 1.0f);
 
         for (int i = 0; i < 5; i++)
         {
@@ -92,12 +74,6 @@ void drawTriangle(GLuint VAO, GLint colorLoc, float r, float g, float b)
     glBindVertexArray(VAO);
     glUniform4f(colorLoc, r, g, b, 1.0f);
     glDrawArrays(GL_TRIANGLES, 0, 3);
-}
-
-GLuint createSmallTriangle(float x, float y)
-{
-    float size = 0.04f;
-    return createTriangle(x - size, y, x + size, y, x, y + 2 * size);
 }
 
 GLuint createTriangle(float x0, float y0, float x1, float y1, float x2, float y2)
@@ -237,10 +213,4 @@ void setupGlConfiguration()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, 8);
-}
-
-void cursorCallback(GLFWwindow* window, double xpos, double ypos)
-{
-    std::cout << "Mouse position: (" << xpos << ", " << ypos << ")" << std::endl;
-
 }
