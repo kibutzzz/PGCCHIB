@@ -1,15 +1,29 @@
-// Leonardo Meinerz Ramos
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <random>
 
 #define WIDTH 800
 #define HEIGHT 600
 #define WINDOW_TITLE "Exercicio Modulo 2 - Triangulos - Leonardo Ramos"
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+using namespace glm;
+
+struct Triangle
+{
+    float posX, posY;
+    float r, g, b;
+    float size;
+    GLuint vao;
+};
+
 GLuint createShader(GLchar *shaderSource, GLenum shaderType);
-GLuint createTriangle(float x0, float y0, float x1, float y1, float x2, float y2);
+Triangle createTriangle(float x, float y, float r, float g, float b, float size);
+void initializeTriangleVao(Triangle &triangle);
 int createShaderProgram(GLuint vertexShader, GLuint fragmentShader);
 
 void setupGlConfiguration();
@@ -17,57 +31,15 @@ void setupGlad();
 void setViewportDimensions(GLFWwindow *window);
 void assertProgramLinkingStatus(GLuint shaderProgram);
 void assertShaderCompilationStatus(GLuint shader);
-void cursorMoveCallback(GLFWwindow *window, double xpos, double ypos);
+
 void cursorClickCallback(GLFWwindow *window, int button, int action, int mods);
 
 int createShaderProgram();
+void drawTriangle(Triangle triangle, GLint colorLoc);
 GLFWwindow *makeWindow(int width, int height, const char *title);
+float randomNumber(float min, float max);
 
-float mouseX, mouseY;
-
-struct Triangle
-{
-    int vertexNumber = 0;
-    float xVertices[3];
-    float yVertices[3];
-    bool isReady = false;
-};
-void drawTriangle(GLuint VAO, GLint colorLoc, float r, float g, float b);
-
-Triangle currentTriangle = Triangle();
-int currentTriangleVaoIndex = 0;
-GLuint triangleVAOs[5];
-
-void addVertices(Triangle &triangle, float x, float y)
-{
-    if (triangle.vertexNumber < 3)
-    {
-        triangle.xVertices[triangle.vertexNumber] = x;
-        triangle.yVertices[triangle.vertexNumber] = y;
-        triangle.vertexNumber++;
-    }
-    if (triangle.vertexNumber == 3)
-    {
-        triangle.isReady = true;
-    }
-}
-
-void addToTrianglesIfReady(Triangle &triangle)
-{
-    if (triangle.isReady)
-    {
-        triangleVAOs[currentTriangleVaoIndex] = createTriangle(currentTriangle.xVertices[0], currentTriangle.yVertices[0],
-                                                               currentTriangle.xVertices[1], currentTriangle.yVertices[1],
-                                                               currentTriangle.xVertices[2], currentTriangle.yVertices[2]);
-        currentTriangleVaoIndex++;
-        if (currentTriangleVaoIndex >= 5)
-        {
-            currentTriangleVaoIndex = 0;
-        }
-        currentTriangle = Triangle();
-
-    }
-}
+std::vector<Triangle> triangles;
 
 int main()
 {
@@ -77,8 +49,6 @@ int main()
 
     GLFWwindow *window = makeWindow(WIDTH, HEIGHT, WINDOW_TITLE);
     glfwMakeContextCurrent(window);
-    glfwSetCursorPosCallback(window, cursorMoveCallback);
-    glfwSetMouseButtonCallback(window, cursorClickCallback);
 
     setupGlad();
     setViewportDimensions(window);
@@ -86,6 +56,17 @@ int main()
     GLuint shaderId = createShaderProgram();
     GLint colorLoc = glGetUniformLocation(shaderId, "inputColor");
     glUseProgram(shaderId);
+
+    glfwSetMouseButtonCallback(window, cursorClickCallback);
+
+    
+
+    // v0(-0.1, -0.1),   v1(0.1, -0.1),  v2(0.0, 0.1)
+    Triangle triangle = createTriangle(100, 100, 0.1, 0.4, 0.2, 50);
+    initializeTriangleVao(triangle);
+
+    mat4 projection = ortho(0.0, 800.0, 600.0, 0.0, -1.0, 1.0);
+	glUniformMatrix4fv(glGetUniformLocation(shaderId, "projection"), 1, GL_FALSE, value_ptr(projection));
 
     while (!glfwWindowShouldClose(window))
     {
@@ -96,11 +77,13 @@ int main()
 
         glLineWidth(10);
         glPointSize(20);
+        
+        drawTriangle(triangle, colorLoc);
 
-        for (int i = 0; i < 5; i++)
+        for(Triangle &t : triangles)
         {
-            // std::cout << "Triangle VAO " << i << ": " << triangleVAOs[i] << std::endl;
-            drawTriangle(triangleVAOs[i], colorLoc, 1.0f / i, 0.4f / i, 1.0f);
+            // std::cout << "Triangle: " << t.posX << ", " << t.posY << std::endl;
+            drawTriangle(t, colorLoc);
         }
 
         glBindVertexArray(0);
@@ -112,19 +95,34 @@ int main()
     return 0;
 }
 
-void drawTriangle(GLuint VAO, GLint colorLoc, float r, float g, float b)
+void drawTriangle(Triangle triangle, GLint colorLoc)
 {
-    glBindVertexArray(VAO);
-    glUniform4f(colorLoc, r, g, b, 1.0f);
+    // std::cout << "Triangle: " << triangle.posX << ", " << triangle.posY << std::endl;
+    // std::cout << "Triangle color: " << triangle.r << ", " << triangle.g << ", " << triangle.b << std::endl;
+    glBindVertexArray(triangle.vao);
+    glUniform4f(colorLoc, triangle.r, triangle.g, triangle.b, 1.0f);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-GLuint createTriangle(float x0, float y0, float x1, float y1, float x2, float y2)
+Triangle createTriangle(float x, float y, float r, float g, float b, float size)
+{
+    Triangle triangle;
+    triangle.r = r;
+    triangle.g = g;
+    triangle.b = b;
+    triangle.posX = x;
+    triangle.posY = y;
+    triangle.size = size;
+
+    return triangle;
+}
+
+void initializeTriangleVao(Triangle &triangle)
 {
     GLfloat vertices[] = {
-        x0, y0, 0.0f,
-        x1, y1, 0.0f,
-        x2, y2, 0.0f};
+        triangle.posX - triangle.size, triangle.posY + triangle.size, 0.0f,
+        triangle.posX, triangle.posY - triangle.size, 0.0f,
+        triangle.posX + triangle.size, triangle.posY + triangle.size, 0.0f};
 
     GLuint VAO, VBO;
 
@@ -141,7 +139,7 @@ GLuint createTriangle(float x0, float y0, float x1, float y1, float x2, float y2
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    return VAO;
+    triangle.vao = VAO;
 }
 
 GLuint createShader(GLchar *shaderSource, GLenum shaderType)
@@ -174,9 +172,10 @@ int createShaderProgram()
     GLuint vertexShader = createShader(R"(
         #version 400
         layout (location = 0) in vec3 position;
+        uniform mat4 projection;
         void main()
         {
-            gl_Position = vec4(position.x, position.y, position.z, 1.0);
+            gl_Position = projection * vec4(position.x, position.y, position.z, 1.0);
         }
         )",
                                        GL_VERTEX_SHADER);
@@ -258,27 +257,25 @@ void setupGlConfiguration()
     glfwWindowHint(GLFW_SAMPLES, 8);
 }
 
-void cursorMoveCallback(GLFWwindow *window, double xpos, double ypos)
-{
-    mouseX = xpos;
-    mouseY = ypos;
-}
-
 void cursorClickCallback(GLFWwindow *window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
-        std::cout << "Left mouse button clicked!" << std::endl;
-        std::cout << "Mouse position: (" << mouseX << ", " << mouseY << ")" << std::endl;
-        addVertices(currentTriangle, (mouseX/800 *2 -1), -(mouseY/600 * 2 -1));
-        // print current triangle position
-        std::cout << "Current triangle position: (" << currentTriangle.xVertices[0] << ", " << currentTriangle.yVertices[0] << ", "
-                  << currentTriangle.xVertices[1] << ", " << currentTriangle.yVertices[1] << ", "
-                  << currentTriangle.xVertices[2] << ", " << currentTriangle.yVertices[2] << ")" << std::endl;
-        addToTrianglesIfReady(currentTriangle);
-        for(int i = 0; i < 5; i++)
-        {
-            std::cout << "Triangle VAO " << i << ": " << triangleVAOs[i] << std::endl;
-        }
+        double mouseX, mouseY;
+        glfwGetCursorPos(window, &mouseX, &mouseY);
+        Triangle triangle = createTriangle(mouseX, mouseY, randomNumber(0, 1), randomNumber(0, 1), randomNumber(0, 1), randomNumber(10, 100));
+        initializeTriangleVao(triangle);
+        std::cout << "Triangle: " << triangle.posX << ", " << triangle.posY << std::endl;
+        std::cout << "Triangle color: " << triangle.r << ", " << triangle.g << ", " << triangle.b << std::endl;
+        std::cout << "Triangle VAO: " << triangle.vao << std::endl;
+        std::cout << "Triangle size: " << triangle.size << std::endl;
+        triangles.push_back(triangle);
     }
+}
+
+float randomNumber(float min, float max) {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dist(min, max);
+    return dist(gen);
 }

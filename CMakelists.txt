@@ -53,6 +53,7 @@ set(EXERCISES
     HelloTriangle
     HelloTransform
     Exercicio1/parte1
+    Exercicio1/parte2
     VivencialTriangulos
     HelloTexture
     Modulo2/Ex1Parte1M2
