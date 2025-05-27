@@ -1,11 +1,19 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 
 const GLuint WIDTH = 800;
 const GLuint HEIGHT = 600;
+const int COLUMNS = 8;
+const int ROWS = 6;
+const GLuint QUAD_WIDTH = 100;
+const GLuint QUAD_HEIGHT = 100;
 const char *WINDOW_TITLE = "Jogo das Cores - Módulo 3";
 
+// initial setup (GLAD, GL hints and window configuration)
 void setupGlConfiguration()
 {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -15,7 +23,7 @@ void setupGlConfiguration()
     glfwWindowHint(GLFW_SAMPLES, 8);
 
 #ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); 
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
     std::cout << "Configuração do OpenGL definida com sucesso!" << std::endl;
 }
@@ -63,7 +71,6 @@ GLFWwindow *makeWindow(GLuint width, GLuint height, const char *title)
     return window;
 }
 
-
 void initializeGlfw()
 {
     if (!glfwInit())
@@ -76,16 +83,18 @@ void initializeGlfw()
 }
 
 // Shader configuration
-
-void assertShaderCompilationStatus(GLuint shader) {
+void assertShaderCompilationStatus(GLuint shader)
+{
     GLint success;
     GLchar infoLog[512];
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
 }
 
-GLuint createShader(GLchar *shaderSource, GLenum shaderType) {
+GLuint createShader(GLchar *shaderSource, GLenum shaderType)
+{
     GLuint shader = glCreateShader(shaderType);
-    if (!shader) {
+    if (!shader)
+    {
         std::cerr << "Erro ao criar shader" << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -94,29 +103,34 @@ GLuint createShader(GLchar *shaderSource, GLenum shaderType) {
     glCompileShader(shader);
 
     assertShaderCompilationStatus(shader);
-
 }
 
-void assertProgramLinkingStatus(GLuint shaderProgram) {
+void assertProgramLinkingStatus(GLuint shaderProgram)
+{
     GLint success;
     GLchar infoLog[512];
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if ( !success) 
+    if (!success)
     {
         glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n"
+                  << infoLog << std::endl;
         exit(EXIT_FAILURE);
-    }    
+    }
 }
 
-GLuint createShaderProgram() {
+GLuint createShaderProgram()
+{
     const GLuint vertexShader = createShader(R"(
         #version 400 
         layout(location = 0) in vec3 position;
+        uniform mat4 projection;
+        uniform mat4 model;
         void main() {
-            gl_Position = vec4(position, 1.0);
+            gl_Position = projection * model * vec4(position, 1.0);
         }
-    )", GL_VERTEX_SHADER);
+    )",
+                                             GL_VERTEX_SHADER);
 
     const GLuint fragmentShader = createShader(R"(
         #version 400
@@ -125,7 +139,8 @@ GLuint createShaderProgram() {
         void main() {
             color = inputColor;
         }
-    )", GL_FRAGMENT_SHADER);
+    )",
+                                               GL_FRAGMENT_SHADER);
 
     GLuint shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
@@ -133,23 +148,98 @@ GLuint createShaderProgram() {
     glLinkProgram(shaderProgram);
 
     assertProgramLinkingStatus(shaderProgram);
-    
+
     std::cout << "Shader program criado e vinculado com sucesso!" << std::endl;
     return shaderProgram;
 }
 
-
-void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+// callbacks
+void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+    {
         glfwSetWindowShouldClose(window, GL_TRUE);
+    }
+
+    if (key == GLFW_KEY_R && action == GLFW_PRESS)
+    {
+        std::cout << "Tecla R pressionada" << std::endl;
     }
 }
 
-void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods) {
-    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    {
         double xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
-        std::cout << "Mouse clicked at: " << xpos << ", " << ypos << std::endl;
+        std::cout << "Clique do mouse: " << xpos << ", " << ypos << std::endl;
+    }
+}
+
+GLuint createRectangle()
+{
+    GLfloat vertices[] = {
+        -0.5, 0.5, 0.0,
+        -0.5, -0.5, 0.0,
+        0.5, -0.5, 0.0,
+        0.5, 0.5, 0.0};
+
+    GLuint VBO;
+
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    GLuint VAO;
+
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+    const GLuint POSITION_ATTRIBUTE_LOCATION = 0;
+    const GLuint POSITION_ATTRIBUTE_SIZE = 3;
+    glVertexAttribPointer(POSITION_ATTRIBUTE_LOCATION, POSITION_ATTRIBUTE_SIZE, GL_FLOAT, GL_FALSE, POSITION_ATTRIBUTE_SIZE * sizeof(GLfloat), (GLvoid *)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    return VAO;
+}
+
+struct Rectangle
+{
+    glm::vec3 position;
+    glm::vec3 dimensions;
+    glm::vec3 color;
+    bool eliminated;
+};
+
+Rectangle grid[ROWS][COLUMNS];
+
+
+void initializeGrid()
+{
+ 
+    for(int i = 0; i < ROWS; i ++) {
+        for (int j = 0; j < COLUMNS; j ++) {
+            Rectangle rectangle;
+            glm::vec2 initialPosition = glm::vec2(QUAD_WIDTH / 2, QUAD_HEIGHT / 2);
+            rectangle.position = glm::vec3(initialPosition.x + j * QUAD_WIDTH, initialPosition.y + i * QUAD_HEIGHT, 0.0f);
+            rectangle.dimensions = glm::vec3(QUAD_WIDTH, QUAD_HEIGHT, 1.0f);
+
+            float r = rand() % 256 / 255.0f;
+            float g = rand() % 256 / 255.0f;
+            float b = rand() % 256 / 255.0f;
+
+            rectangle.color = glm::vec3(r, g, b);
+            rectangle.eliminated = false;
+            grid[i][j] = rectangle;
+
+            std::cout << "Retângulo [" << i << "][" << j << "] inicializado com cor: (" 
+                      << rectangle.color.r << ", " 
+                      << rectangle.color.g << ", " 
+                      << rectangle.color.b << ")" << std::endl;
+        }
     }
 }
 
@@ -163,25 +253,56 @@ int main()
     GLFWwindow *window = makeWindow(WIDTH, HEIGHT, WINDOW_TITLE);
 
     GLuint shaderId = createShaderProgram();
-    
+    glUseProgram(shaderId);
+
     glfwSetKeyCallback(window, keyCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
 
-    
-    while (!glfwWindowShouldClose(window)) {
+    GLuint rectangleVAO = createRectangle();
+    std::cout << "VAO do retângulo criado com sucesso!" << std::endl;
+
+    initializeGrid();
+
+    GLint colorLocation = glGetUniformLocation(shaderId, "inputColor");
+
+    glm::mat4 projection = glm::ortho(0.0f, (float)WIDTH, (float)HEIGHT, 0.0f, -1.0f, 1.0f);
+    glUniformMatrix4fv(glGetUniformLocation(shaderId, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    std::cout << "Matriz de projeção definida!" << std::endl;
+
+    while (!glfwWindowShouldClose(window))
+    {
         glfwPollEvents();
 
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f); 
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glLineWidth(10);
         glPointSize(20);
 
+        glBindVertexArray(rectangleVAO);
+        for (int i = 0; i < ROWS; i++) {
+            for(int j = 0; j < COLUMNS; j++) {
+                Rectangle &currentRectangle = grid[i][j];
+                glm::mat4 model = glm::mat4(1.0f);
+                model = translate(model, currentRectangle.position);
+                model = scale(model, currentRectangle.dimensions);
+                
+                glUniformMatrix4fv(glGetUniformLocation(shaderId, "model"), 1, GL_FALSE, glm::value_ptr(model));
+                glUniform4f(colorLocation, currentRectangle.color.r, currentRectangle.color.g, currentRectangle.color.b, 1.0f);
 
+                glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+                std::cout << "Desenhando retângulo [" << i << "][" << j << "] com cor: (" 
+                          << currentRectangle.color.r << ", " 
+                          << currentRectangle.color.g << ", " 
+                          << currentRectangle.color.b << ")" << std::endl;
+            }
+        }
+
+        glBindVertexArray(0);
 
         glfwSwapBuffers(window);
     }
 
     glfwTerminate();
-    return 0;    
+    return 0;
 }
