@@ -9,8 +9,8 @@ const GLuint WIDTH = 800;
 const GLuint HEIGHT = 600;
 const int COLUMNS = 8;
 const int ROWS = 6;
-const GLuint QUAD_WIDTH = 100;
-const GLuint QUAD_HEIGHT = 100;
+const GLuint RECTANGLE_WIDTH = 100;
+const GLuint RECTANGLE_HEIGHT = 100;
 const char *WINDOW_TITLE = "Jogo das Cores - Módulo 3";
 
 // initial setup (GLAD, GL hints and window configuration)
@@ -127,7 +127,7 @@ GLuint createShaderProgram()
         uniform mat4 projection;
         uniform mat4 model;
         void main() {
-            gl_Position = projection * model * vec4(position, 1.0);
+	        gl_Position = projection * model * vec4(position.x, position.y, position.z, 1.0);
         }
     )",
                                              GL_VERTEX_SHADER);
@@ -180,10 +180,11 @@ void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
 GLuint createRectangle()
 {
     GLfloat vertices[] = {
-        -0.5, 0.5, 0.0,
-        -0.5, -0.5, 0.0,
-        0.5, -0.5, 0.0,
-        0.5, 0.5, 0.0};
+        -0.5, 0.5, 0.0,  // Top-left
+        -0.5, -0.5, 0.0, // Bottom-left
+        0.5, 0.5, 0.0,   // Top-right
+        0.5, -0.5, 0.0   // Bottom-right
+    };
 
     GLuint VBO;
 
@@ -216,16 +217,17 @@ struct Rectangle
 
 Rectangle grid[ROWS][COLUMNS];
 
-
 void initializeGrid()
 {
- 
-    for(int i = 0; i < ROWS; i ++) {
-        for (int j = 0; j < COLUMNS; j ++) {
+
+    for (int i = 0; i < ROWS; i++)
+    {
+        for (int j = 0; j < COLUMNS; j++)
+        {
             Rectangle rectangle;
-            glm::vec2 initialPosition = glm::vec2(QUAD_WIDTH / 2, QUAD_HEIGHT / 2);
-            rectangle.position = glm::vec3(initialPosition.x + j * QUAD_WIDTH, initialPosition.y + i * QUAD_HEIGHT, 0.0f);
-            rectangle.dimensions = glm::vec3(QUAD_WIDTH, QUAD_HEIGHT, 1.0f);
+            glm::vec2 initialPosition = glm::vec2(RECTANGLE_WIDTH / 2, RECTANGLE_HEIGHT / 2);
+            rectangle.position = glm::vec3(initialPosition.x + j * RECTANGLE_WIDTH, initialPosition.y + i * RECTANGLE_HEIGHT, 0.0f);
+            rectangle.dimensions = glm::vec3(RECTANGLE_WIDTH, RECTANGLE_HEIGHT, 1.0f);
 
             float r = rand() % 256 / 255.0f;
             float g = rand() % 256 / 255.0f;
@@ -234,11 +236,6 @@ void initializeGrid()
             rectangle.color = glm::vec3(r, g, b);
             rectangle.eliminated = false;
             grid[i][j] = rectangle;
-
-            std::cout << "Retângulo [" << i << "][" << j << "] inicializado com cor: (" 
-                      << rectangle.color.r << ", " 
-                      << rectangle.color.g << ", " 
-                      << rectangle.color.b << ")" << std::endl;
         }
     }
 }
@@ -254,7 +251,20 @@ int main()
 
     GLuint shaderId = createShaderProgram();
     glUseProgram(shaderId);
+ 
+    GLint numUniforms;
+    glGetProgramiv(shaderId, GL_ACTIVE_UNIFORMS, &numUniforms);
+    std::cout << "Número de uniforms ativos: " << numUniforms << std::endl;
 
+    for (GLint i = 0; i < numUniforms; ++i)
+    {
+        char name[256];
+        GLsizei length;
+        GLint size;
+        GLenum type;
+        glGetActiveUniform(shaderId, i, sizeof(name), &length, &size, &type, name);
+        std::cout << "Uniform " << i << ": " << name << std::endl;
+    }
     glfwSetKeyCallback(window, keyCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
 
@@ -262,8 +272,6 @@ int main()
     std::cout << "VAO do retângulo criado com sucesso!" << std::endl;
 
     initializeGrid();
-
-    GLint colorLocation = glGetUniformLocation(shaderId, "inputColor");
 
     glm::mat4 projection = glm::ortho(0.0f, (float)WIDTH, (float)HEIGHT, 0.0f, -1.0f, 1.0f);
     glUniformMatrix4fv(glGetUniformLocation(shaderId, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
@@ -280,21 +288,33 @@ int main()
         glPointSize(20);
 
         glBindVertexArray(rectangleVAO);
-        for (int i = 0; i < ROWS; i++) {
-            for(int j = 0; j < COLUMNS; j++) {
+        for (int i = 0; i < ROWS; i++)
+        {
+            for (int j = 0; j < COLUMNS; j++)
+            {
                 Rectangle &currentRectangle = grid[i][j];
-                glm::mat4 model = glm::mat4(1.0f);
+
+                glm::mat4 model = glm::mat4(1);
                 model = translate(model, currentRectangle.position);
                 model = scale(model, currentRectangle.dimensions);
-                
-                glUniformMatrix4fv(glGetUniformLocation(shaderId, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+                GLint modelLocation = glGetUniformLocation(shaderId, "model");
+                if (modelLocation == -1)
+                {
+                    std::cerr << "Erro: Uniform 'model' não encontrado no shader!" << std::endl;
+                    exit(EXIT_FAILURE);
+                }
+                glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(model));
+
+                GLint colorLocation = glGetUniformLocation(shaderId, "inputColor");
+                if (colorLocation == -1)
+                {
+                    std::cerr << "Erro: Uniform 'inputColor' não encontrado no shader!" << std::endl;
+                    exit(EXIT_FAILURE);
+                }
                 glUniform4f(colorLocation, currentRectangle.color.r, currentRectangle.color.g, currentRectangle.color.b, 1.0f);
 
-                glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-                std::cout << "Desenhando retângulo [" << i << "][" << j << "] com cor: (" 
-                          << currentRectangle.color.r << ", " 
-                          << currentRectangle.color.g << ", " 
-                          << currentRectangle.color.b << ")" << std::endl;
+                glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
             }
         }
 
