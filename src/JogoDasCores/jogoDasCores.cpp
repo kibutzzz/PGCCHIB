@@ -13,8 +13,10 @@ const int ROWS = 6;
 const GLuint RECTANGLE_WIDTH = 100;
 const GLuint RECTANGLE_HEIGHT = 100;
 const float TOLERANCE = 0.2f;
-const float MAXIMUM_DISTANCE = sqrt(3.0f); 
+const float MAXIMUM_DISTANCE = sqrt(3.0f);
 const char *WINDOW_TITLE = "Jogo das Cores - Módulo 3";
+bool finished = false;
+float attempts = 0;
 
 struct Rectangle
 {
@@ -207,6 +209,46 @@ GLuint createShaderProgram()
     return shaderProgram;
 }
 
+bool areAllSquaresEliminated()
+{
+    for (int i = 0; i < ROWS; i++)
+    {
+        for (int j = 0; j < COLUMNS; j++)
+        {
+            if (!grid[i][j].eliminated)
+            {
+                return false; // Found a square that is not eliminated
+            }
+        }
+    }
+    return true; // All squares are eliminated
+}
+
+void initializeGrid()
+{
+
+    finished = false;
+    attempts = 0;
+    for (int i = 0; i < ROWS; i++)
+    {
+        for (int j = 0; j < COLUMNS; j++)
+        {
+            Rectangle rectangle;
+            glm::vec2 initialPosition = glm::vec2(RECTANGLE_WIDTH / 2, RECTANGLE_HEIGHT / 2);
+            rectangle.position = glm::vec3(initialPosition.x + j * RECTANGLE_WIDTH, initialPosition.y + i * RECTANGLE_HEIGHT, 0.0f);
+            rectangle.dimensions = glm::vec3(RECTANGLE_WIDTH, RECTANGLE_HEIGHT, 1.0f);
+
+            float r = rand() % 256 / 255.0f;
+            float g = rand() % 256 / 255.0f;
+            float b = rand() % 256 / 255.0f;
+
+            rectangle.color = glm::vec3(r, g, b);
+            rectangle.eliminated = false;
+            grid[i][j] = rectangle;
+        }
+    }
+}
+
 // callbacks
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
@@ -217,7 +259,8 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
 
     if (key == GLFW_KEY_R && action == GLFW_PRESS)
     {
-        std::cout << "Tecla R pressionada" << std::endl;
+        std::cout << "Reiniciando o jogo" << std::endl;
+        initializeGrid();
     }
 }
 
@@ -230,29 +273,37 @@ void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
         std::cout << "Clique do mouse: " << xpos << ", " << ypos << std::endl;
         int x = xpos / RECTANGLE_WIDTH;
         int y = ypos / RECTANGLE_HEIGHT;
-        
+
         Rectangle &selectedRectangle = grid[y][x];
         selectedRectangle.eliminated = true;
 
         std::cout << "Quadrado selecionado: " << x << ", " << y << std::endl;
 
         glm::vec3 currentColor = selectedRectangle.color;
-    
-        for(int i = 0; i < ROWS; i++)
+
+        for (int i = 0; i < ROWS; i++)
         {
-            for(int j = 0; j < COLUMNS; j++)
+            for (int j = 0; j < COLUMNS; j++)
             {
                 float distance = sqrt(pow(currentColor.r - grid[i][j].color.r, 2) +
-                                       pow(currentColor.g - grid[i][j].color.g, 2) +
-                                       pow(currentColor.b - grid[i][j].color.b, 2));
-
+                                      pow(currentColor.g - grid[i][j].color.g, 2) +
+                                      pow(currentColor.b - grid[i][j].color.b, 2));
 
                 float normalizedDistance = distance / MAXIMUM_DISTANCE;
-                if(normalizedDistance < TOLERANCE) {
+                if (normalizedDistance < TOLERANCE)
+                {
                     grid[i][j].eliminated = true;
-                    std::cout << "Quadrado [" << i << "][" << j << "] eliminado!" << std::endl;
-                } 
+                }
             }
+        }
+
+        attempts++;
+
+        std::cout << "Pontuanção Atual: " << 100.0f / sqrt(attempts) << std::endl;
+        if (areAllSquaresEliminated())
+        {
+            std::cout << "Todos os quadrados foram eliminados!" << std::endl;
+            std::cout << "Reinicie o jogo pressionando R." << std::endl;
         }
     }
 }
@@ -285,29 +336,6 @@ GLuint createRectangle()
     glBindVertexArray(0);
 
     return VAO;
-}
-
-void initializeGrid()
-{
-
-    for (int i = 0; i < ROWS; i++)
-    {
-        for (int j = 0; j < COLUMNS; j++)
-        {
-            Rectangle rectangle;
-            glm::vec2 initialPosition = glm::vec2(RECTANGLE_WIDTH / 2, RECTANGLE_HEIGHT / 2);
-            rectangle.position = glm::vec3(initialPosition.x + j * RECTANGLE_WIDTH, initialPosition.y + i * RECTANGLE_HEIGHT, 0.0f);
-            rectangle.dimensions = glm::vec3(RECTANGLE_WIDTH, RECTANGLE_HEIGHT, 1.0f);
-
-            float r = rand() % 256 / 255.0f;
-            float g = rand() % 256 / 255.0f;
-            float b = rand() % 256 / 255.0f;
-
-            rectangle.color = glm::vec3(r, g, b);
-            rectangle.eliminated = false;
-            grid[i][j] = rectangle;
-        }
-    }
 }
 
 void renderText(const char *text, float x, float y)
