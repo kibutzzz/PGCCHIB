@@ -4,6 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include "../../build/_deps/stb_image-src/stb_easy_font.h"
 
 const GLuint WIDTH = 800;
 const GLuint HEIGHT = 600;
@@ -12,6 +13,16 @@ const int ROWS = 6;
 const GLuint RECTANGLE_WIDTH = 100;
 const GLuint RECTANGLE_HEIGHT = 100;
 const char *WINDOW_TITLE = "Jogo das Cores - Módulo 3";
+
+struct Rectangle
+{
+    glm::vec3 position;
+    glm::vec3 dimensions;
+    glm::vec3 color;
+    bool eliminated;
+};
+
+Rectangle grid[ROWS][COLUMNS];
 
 // initial setup (GLAD, GL hints and window configuration)
 void setupGlConfiguration()
@@ -83,11 +94,50 @@ void initializeGlfw()
 }
 
 // Shader configuration
+
+void checkOpenGLError(const std::string &context)
+{
+    GLenum error = glGetError();
+    while (error != GL_NO_ERROR)
+    {
+        std::string errorMessage;
+        switch (error)
+        {
+        case GL_INVALID_ENUM:
+            errorMessage = "GL_INVALID_ENUM: An unacceptable value is specified for an enumerated argument.";
+            break;
+        case GL_INVALID_VALUE:
+            errorMessage = "GL_INVALID_VALUE: A numeric argument is out of range.";
+            break;
+        case GL_INVALID_OPERATION:
+            errorMessage = "GL_INVALID_OPERATION: The specified operation is not allowed in the current state.";
+            break;
+        case GL_INVALID_FRAMEBUFFER_OPERATION:
+            errorMessage = "GL_INVALID_FRAMEBUFFER_OPERATION: The framebuffer object is not complete.";
+            break;
+        case GL_OUT_OF_MEMORY:
+            errorMessage = "GL_OUT_OF_MEMORY: There is not enough memory left to execute the command.";
+            break;
+        default:
+            errorMessage = "Unknown error.";
+            break;
+        }
+        std::cerr << "OpenGL Error (" << context << "): " << errorMessage << std::endl;
+        error = glGetError(); // Check for additional errors
+    }
+}
 void assertShaderCompilationStatus(GLuint shader)
 {
     GLint success;
     GLchar infoLog[512];
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(shader, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::COMPILATION_FAILED\n"
+                  << infoLog << std::endl;
+        exit(EXIT_FAILURE);
+    }
 }
 
 GLuint createShader(GLchar *shaderSource, GLenum shaderType)
@@ -101,8 +151,10 @@ GLuint createShader(GLchar *shaderSource, GLenum shaderType)
 
     glShaderSource(shader, 1, &shaderSource, nullptr);
     glCompileShader(shader);
+    checkOpenGLError("Shader Complilation");
 
     assertShaderCompilationStatus(shader);
+    return shader;
 }
 
 void assertProgramLinkingStatus(GLuint shaderProgram)
@@ -137,7 +189,7 @@ GLuint createShaderProgram()
         uniform vec4 inputColor;
         out vec4 color;
         void main() {
-            color = inputColor;
+            color = inputColor * vec4(1.0); // Ensure inputColor is used
         }
     )",
                                                GL_FRAGMENT_SHADER);
@@ -146,7 +198,7 @@ GLuint createShaderProgram()
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
-
+    checkOpenGLError("Shader Program Linking");
     assertProgramLinkingStatus(shaderProgram);
 
     std::cout << "Shader program criado e vinculado com sucesso!" << std::endl;
@@ -174,6 +226,11 @@ void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
         double xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
         std::cout << "Clique do mouse: " << xpos << ", " << ypos << std::endl;
+        int x = xpos / RECTANGLE_WIDTH;
+        int y = ypos / RECTANGLE_HEIGHT;
+        grid[y][x].eliminated = true;
+
+        std::cout << "Quadrado selecionado: " << x << ", " << y << std::endl;
     }
 }
 
@@ -207,16 +264,6 @@ GLuint createRectangle()
     return VAO;
 }
 
-struct Rectangle
-{
-    glm::vec3 position;
-    glm::vec3 dimensions;
-    glm::vec3 color;
-    bool eliminated;
-};
-
-Rectangle grid[ROWS][COLUMNS];
-
 void initializeGrid()
 {
 
@@ -240,6 +287,19 @@ void initializeGrid()
     }
 }
 
+void renderText(const char *text, float x, float y)
+{
+    static char buffer[99999]; // pode armazenar até 99999 vértices
+    int num_quads;
+
+    num_quads = stb_easy_font_print(x, y, (char *)text, NULL, buffer, sizeof(buffer));
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 16, buffer);
+    glDrawArrays(GL_QUADS, 0, num_quads * 4);
+    glDisableClientState(GL_VERTEX_ARRAY);
+}
+
 int main()
 {
     std::cout << "Jogo das Cores - Módulo 3 - Leonardo Meinerz Ramos" << std::endl;
@@ -251,7 +311,7 @@ int main()
 
     GLuint shaderId = createShaderProgram();
     glUseProgram(shaderId);
- 
+
     GLint numUniforms;
     glGetProgramiv(shaderId, GL_ACTIVE_UNIFORMS, &numUniforms);
     std::cout << "Número de uniforms ativos: " << numUniforms << std::endl;
@@ -277,6 +337,9 @@ int main()
     glUniformMatrix4fv(glGetUniformLocation(shaderId, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
     std::cout << "Matriz de projeção definida!" << std::endl;
 
+    GLint colorLocation = glGetUniformLocation(shaderId, "inputColor");
+    checkOpenGLError("Uniform Location Retrieval");
+
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -288,12 +351,17 @@ int main()
         glPointSize(20);
 
         glBindVertexArray(rectangleVAO);
+
+        renderText("Pressione R para reiniciar o jogo", 10.0f, 20.0f);
         for (int i = 0; i < ROWS; i++)
         {
             for (int j = 0; j < COLUMNS; j++)
             {
                 Rectangle &currentRectangle = grid[i][j];
-
+                if (currentRectangle.eliminated)
+                {
+                    continue; // Skip rendering for eliminated rectangles
+                }
                 glm::mat4 model = glm::mat4(1);
                 model = translate(model, currentRectangle.position);
                 model = scale(model, currentRectangle.dimensions);
@@ -306,7 +374,6 @@ int main()
                 }
                 glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(model));
 
-                GLint colorLocation = glGetUniformLocation(shaderId, "inputColor");
                 if (colorLocation == -1)
                 {
                     std::cerr << "Erro: Uniform 'inputColor' não encontrado no shader!" << std::endl;
