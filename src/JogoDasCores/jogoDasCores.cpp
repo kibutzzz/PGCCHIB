@@ -12,6 +12,8 @@ const int COLUMNS = 8;
 const int ROWS = 6;
 const GLuint RECTANGLE_WIDTH = 100;
 const GLuint RECTANGLE_HEIGHT = 100;
+const float TOLERANCE = 0.2f;
+const float MAXIMUM_DISTANCE = sqrt(3.0f); 
 const char *WINDOW_TITLE = "Jogo das Cores - Módulo 3";
 
 struct Rectangle
@@ -228,9 +230,30 @@ void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
         std::cout << "Clique do mouse: " << xpos << ", " << ypos << std::endl;
         int x = xpos / RECTANGLE_WIDTH;
         int y = ypos / RECTANGLE_HEIGHT;
-        grid[y][x].eliminated = true;
+        
+        Rectangle &selectedRectangle = grid[y][x];
+        selectedRectangle.eliminated = true;
 
         std::cout << "Quadrado selecionado: " << x << ", " << y << std::endl;
+
+        glm::vec3 currentColor = selectedRectangle.color;
+    
+        for(int i = 0; i < ROWS; i++)
+        {
+            for(int j = 0; j < COLUMNS; j++)
+            {
+                float distance = sqrt(pow(currentColor.r - grid[i][j].color.r, 2) +
+                                       pow(currentColor.g - grid[i][j].color.g, 2) +
+                                       pow(currentColor.b - grid[i][j].color.b, 2));
+
+
+                float normalizedDistance = distance / MAXIMUM_DISTANCE;
+                if(normalizedDistance < TOLERANCE) {
+                    grid[i][j].eliminated = true;
+                    std::cout << "Quadrado [" << i << "][" << j << "] eliminado!" << std::endl;
+                } 
+            }
+        }
     }
 }
 
@@ -292,7 +315,7 @@ void renderText(const char *text, float x, float y)
     static char buffer[99999]; // pode armazenar até 99999 vértices
     int num_quads;
 
-    num_quads = stb_easy_font_print(x, y, (char *)text, NULL, buffer, sizeof(buffer));
+    num_quads = stb_easy_font_print(x, y, (char *)text, nullptr, buffer, sizeof(buffer));
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(2, GL_FLOAT, 16, buffer);
