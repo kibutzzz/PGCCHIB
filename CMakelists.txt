@@ -63,6 +63,7 @@ set(EXERCISES
     Modulo3/M3JogoCores
     JogoDasCores/jogoDasCores
     Paralaxe/paralaxe
+    VivencialM6/VivencialM6
 )
 
 add_compile_options(-Wno-pragmas)
