@@ -257,6 +257,14 @@ int loadTexture(std::string filePath)
 
     return texID;
 }
+
+
+GLfloat calcIsoX(float x, float y) {
+    return (x - y);
+}
+GLfloat calcIsoY(float x, float y) {
+    return (x + y) / 2;
+}
 int setupGeometry()
 {
 
@@ -268,10 +276,10 @@ int setupGeometry()
     GLfloat vertices[] = {
         // x      y      z      r     g      b      s      t
         // T0
-        1.0,    1.0,    0.0,   0.0,  0.0,   0.0,   1.0/7.0,   1.0,   
-        0.0,   0.0,     0.0,   0.0,  0.0,   0.0,   0.0,      0.0,
-        0.0,   1.0,     0.0,   0.0,  0.0,   0.0,   0.0,   1.0,    
-        1.0,    0.0,    0.0,   0.0,  0.0,   0.0,   1.0/7.0,   0.0,
+        calcIsoX(1.0,    1.0), calcIsoY(1.0,    1.0),    0.0,   0.0,  0.0,   0.0,   1.0/7.0,   1.0,   
+        calcIsoX(0.0,   0.0), calcIsoY(0.0,   0.0),     0.0,   0.0,  0.0,   0.0,   0.0,      0.0,
+        calcIsoX(0.0,   1.0), calcIsoY(0.0,   1.0),     0.0,   0.0,  0.0,   0.0,   0.0,   1.0,    
+        calcIsoX(1.0,    0.0), calcIsoY(1.0,    0.0),    0.0,   0.0,  0.0,   0.0,   1.0/7.0,   0.0,
     };
 
     GLuint VBO, VAO;
@@ -350,6 +358,7 @@ void draw(const Sprite &sprite) {
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
+
 int main()
 {
 
@@ -378,8 +387,7 @@ int main()
     jorge.VAO = VAO;
     jorge.textureId = texID;
     jorge.shaderId = shaderId;
-    jorge.translate = glm::vec3(200.0f, 200.0f, 0.0f);
-    jorge.scale = glm::vec3(50.0f, 50.0f, 1.0f);
+    jorge.scale = glm::vec3(100.0f, 100.0f, 1.0f);
 
     int mapWidth = 3;
     int mapHeight = 3;
@@ -395,7 +403,16 @@ int main()
         std::vector<Sprite> row;
         for (int j = 0; j < mapWidth; ++j) {
             Sprite tile = jorge;
-            tile.translate = glm::vec3(j * 50.0f, i * 50.0f, 0.0f);
+
+            // Posição cartesiana
+            float cartX = j * tile.scale.x;
+            float cartY = i * tile.scale.y;
+
+            // Conversão para coordenadas isométricas
+            float isoX = cartX - cartY;
+            float isoY = (cartX + cartY) / 2;
+
+            tile.translate = glm::vec3(isoX + WIDTH / 2.0f, isoY, 0.0f);
             tile.frameIndex = mapData[i][j];
             row.push_back(tile);
         }
@@ -404,11 +421,12 @@ int main()
 
 
 
+
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
 
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glLineWidth(10);
