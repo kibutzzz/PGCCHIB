@@ -228,6 +228,7 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
                 playerX--;
                 playerY++;
             }
+            std::cout << "direção: W (up) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_X: // down
             if (playerX < 4 && playerY > 0)
@@ -235,6 +236,7 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
                 playerX++;
                 playerY--;
             }
+            std::cout << "direção: X (down) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_A: // left
             if (playerX > 0 && playerY > 0)
@@ -242,6 +244,7 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
                 playerX--;
                 playerY--;
             }
+            std::cout << "direção: A (left) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_D: // right
             if (playerX < 4 && playerY < 4)
@@ -249,25 +252,33 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
                 playerX++;
                 playerY++;
             }
+            std::cout << "direção: D (right) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_Q: // up-left
 
             if (playerX > 0)
                 playerX--;
+            std::cout << "direção: Q (up-left) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_E: // up-right
 
             if (playerY < 4)
                 playerY++;
+
+            std::cout << "direção: E (up-right) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_Z: // down-left
             if (playerY > 0)
                 playerY--;
+
+            std::cout << "direção: Z (down-left) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_C: // down-right
 
             if (playerX < 4)
                 playerX++;
+
+            std::cout << "direção: C (down-right) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         default:
             break;
@@ -478,7 +489,7 @@ int main()
             float x = j * tile.scale.x / 2.0f + i * tile.scale.y / 2.0f;
             float y = i * tile.scale.x / 2.0f - j * tile.scale.y / 2.0f;
 
-            tile.translate = glm::vec3(x + WIDTH / 4.0f, y + HEIGHT / 4.0f, 0.0f);
+            tile.translate = glm::vec3(x + WIDTH / 5.0f, y + HEIGHT / 2.5f, 0.0f);
             tile.frameIndex = mapData[i][j];
             row.push_back(tile);
         }
