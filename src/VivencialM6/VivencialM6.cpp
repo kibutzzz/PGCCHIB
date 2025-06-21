@@ -223,43 +223,51 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         switch (key)
         {
         case GLFW_KEY_W: // up
-            if (playerX > 0 && playerY < 4) {
+            if (playerX > 0 && playerY < 4)
+            {
                 playerX--;
                 playerY++;
             }
             break;
         case GLFW_KEY_X: // down
-            if (playerX < 4 && playerY > 0) {
+            if (playerX < 4 && playerY > 0)
+            {
                 playerX++;
                 playerY--;
             }
             break;
         case GLFW_KEY_A: // left
-            if (playerX > 0 && playerY > 0) {
+            if (playerX > 0 && playerY > 0)
+            {
                 playerX--;
                 playerY--;
             }
             break;
         case GLFW_KEY_D: // right
-            if (playerX < 4 && playerY < 4) {
+            if (playerX < 4 && playerY < 4)
+            {
                 playerX++;
                 playerY++;
             }
             break;
         case GLFW_KEY_Q: // up-left
-            
-            if (playerX > 0) playerX--;
+
+            if (playerX > 0)
+                playerX--;
             break;
         case GLFW_KEY_E: // up-right
-            
-            if (playerY < 4) playerY++;
+
+            if (playerY < 4)
+                playerY++;
             break;
         case GLFW_KEY_Z: // down-left
-            if (playerY > 0) playerY--;
+            if (playerY > 0)
+                playerY--;
             break;
         case GLFW_KEY_C: // down-right
-            
-            if (playerX < 4) playerX++;
+
+            if (playerX < 4)
+                playerX++;
             break;
         default:
             break;
@@ -309,28 +317,28 @@ int loadTexture(std::string filePath)
     return texID;
 }
 
-
-GLfloat calcIsoX(float x, float y) {
+GLfloat calcIsoX(float x, float y)
+{
     return (x - y);
 }
-GLfloat calcIsoY(float x, float y) {
+GLfloat calcIsoY(float x, float y)
+{
     return (x + y) / 2;
 }
 int setupGeometry()
 {
-
 
     // Aqui setamos as coordenadas x, y e z do triângulo e as armazenamos de forma
     // sequencial, já visando mandar para o VBO (Vertex Buffer Objects)
     // Cada atributo do vértice (coordenada, cores, coordenadas de textura, normal, etc)
     // Pode ser arazenado em um VBO único ou em VBOs separados
     GLfloat vertices[] = {
-        // x      y      z      r     g      b      s           t
+        // x      y      z      r    g    b      s           t
         // T0
-        0.0,     0.5,    0.0,   0.0,  0.0,   0.0,   0.0,       0.5,   
-        0.5,     1.0,    0.0,   0.0,  0.0,   0.0,   1.0/14.0,  1.0,
-        1.0,     0.5,    0.0,   0.0,  0.0,   0.0,   1.0/7.0,   0.5,    
-        0.5,     0.0,    0.0,   0.0,  0.0,   0.0,   1.0/14.0,  0.0,
+        0.0,    0.5,    0.0,    0.0, 0.0, 0.0,  0.0,        0.5,        //
+        0.5,    1.0,    0.0,    0.0, 0.0, 0.0,  1.0 / 14.0, 1.0,        //
+        1.0,    0.5,    0.0,    0.0, 0.0, 0.0,  1.0 / 7.0,  0.5,        //
+        0.5,    0.0,    0.0,    0.0, 0.0, 0.0,  1.0 / 14.0, 0.0,        //
     };
 
     GLuint VBO, VAO;
@@ -386,7 +394,8 @@ int setupGeometry()
     return VAO;
 }
 
-struct Sprite {
+struct Sprite
+{
     GLuint VAO;
     GLuint textureId;
     GLuint shaderId;
@@ -395,14 +404,16 @@ struct Sprite {
     int frameIndex;
 };
 
-bool isPlayerPosition(int x, int y) {
+bool isPlayerPosition(int x, int y)
+{
     return (x == playerX && y == playerY);
 }
 
-void draw(const Sprite &sprite, int x, int y) {
+void draw(const Sprite &sprite, int x, int y)
+{
     glBindTexture(GL_TEXTURE_2D, sprite.textureId);
     glBindVertexArray(sprite.VAO);
-    
+
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, sprite.translate);
     model = glm::scale(model, sprite.scale);
@@ -419,7 +430,6 @@ void draw(const Sprite &sprite, int x, int y) {
 int main()
 {
 
-    
     std::cout << "Jogo das Cores - Módulo 3 - Leonardo Meinerz Ramos" << std::endl;
 
     initializeGlfw();
@@ -456,12 +466,13 @@ int main()
         {5, 4, 4, 3, 4},
         {0, 0, 0, 0, 0},
         {3, 4, 1, 5, 4},
-        {2, 3, 4, 1, 1}
-    };
+        {2, 3, 4, 1, 1}};
 
-    for (int i = 0; i < mapHeight; ++i) {
+    for (int i = 0; i < mapHeight; ++i)
+    {
         std::vector<Sprite> row;
-        for (int j = 0; j < mapWidth; ++j) {
+        for (int j = 0; j < mapWidth; ++j)
+        {
             Sprite tile = jorge;
 
             float x = j * tile.scale.x / 2.0f + i * tile.scale.y / 2.0f;
@@ -474,9 +485,6 @@ int main()
         map.push_back(row);
     }
 
-
-
-
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -487,8 +495,10 @@ int main()
         glLineWidth(10);
         glPointSize(20);
 
-       for(size_t i = 0; i < map.size(); ++i) {
-            for(size_t j = 0; j < map[i].size(); ++j) {
+        for (size_t i = 0; i < map.size(); ++i)
+        {
+            for (size_t j = 0; j < map[i].size(); ++j)
+            {
                 draw(map[i][j], i, j);
             }
         }
