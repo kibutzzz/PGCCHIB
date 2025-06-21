@@ -14,7 +14,10 @@
 
 const GLuint WIDTH = 800;
 const GLuint HEIGHT = 600;
-const char *WINDOW_TITLE = "Paralaxe - Vivencial - Módulo 4";
+const char *WINDOW_TITLE = "Vivencia M6";
+
+int playerX = 3;
+int playerY = 3;
 
 // initial setup (GLAD, GL hints and window configuration)
 void setupGlConfiguration()
@@ -214,6 +217,54 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
     {
         glfwSetWindowShouldClose(window, GL_TRUE);
     }
+    // use qweadzxc to move player
+    if (action == GLFW_PRESS)
+    {
+        switch (key)
+        {
+        case GLFW_KEY_W: // up
+            if (playerX > 0 && playerY < 4) {
+                playerX--;
+                playerY++;
+            }
+            break;
+        case GLFW_KEY_X: // down
+            if (playerX < 4 && playerY > 0) {
+                playerX++;
+                playerY--;
+            }
+            break;
+        case GLFW_KEY_A: // left
+            if (playerX > 0 && playerY > 0) {
+                playerX--;
+                playerY--;
+            }
+            break;
+        case GLFW_KEY_D: // right
+            if (playerX < 4 && playerY < 4) {
+                playerX++;
+                playerY++;
+            }
+            break;
+        case GLFW_KEY_Q: // up-left
+            
+            if (playerX > 0) playerX--;
+            break;
+        case GLFW_KEY_E: // up-right
+            
+            if (playerY < 4) playerY++;
+            break;
+        case GLFW_KEY_Z: // down-left
+            if (playerY > 0) playerY--;
+            break;
+        case GLFW_KEY_C: // down-right
+            
+            if (playerX < 4) playerX++;
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 int loadTexture(std::string filePath)
@@ -344,7 +395,11 @@ struct Sprite {
     int frameIndex;
 };
 
-void draw(const Sprite &sprite) {
+bool isPlayerPosition(int x, int y) {
+    return (x == playerX && y == playerY);
+}
+
+void draw(const Sprite &sprite, int x, int y) {
     glBindTexture(GL_TEXTURE_2D, sprite.textureId);
     glBindVertexArray(sprite.VAO);
     
@@ -353,7 +408,9 @@ void draw(const Sprite &sprite) {
     model = glm::scale(model, sprite.scale);
 
     glUniformMatrix4fv(glGetUniformLocation(sprite.shaderId, "model"), 1, GL_FALSE, glm::value_ptr(model));
-    glUniform1i(glGetUniformLocation(sprite.shaderId, "frameIndex"), sprite.frameIndex);
+    int frameIndex = isPlayerPosition(x, y) ? 6 : sprite.frameIndex;
+
+    glUniform1i(glGetUniformLocation(sprite.shaderId, "frameIndex"), frameIndex);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -388,15 +445,18 @@ int main()
     jorge.textureId = texID;
     jorge.shaderId = shaderId;
     jorge.scale = glm::vec3(100.0f, 100.0f, 1.0f);
+    jorge.translate = glm::vec3(0.0f, 0.0f, 0.0f);
 
-    int mapWidth = 3;
-    int mapHeight = 3;
+    int mapWidth = 5;
+    int mapHeight = 5;
     std::vector<std::vector<Sprite>> map;
 
     std::vector<std::vector<int>> mapData = {
-        {1, 1, 4},
-        {4, 1, 4},
-        {4, 4, 1}
+        {0, 1, 2, 3, 4},
+        {5, 4, 4, 3, 4},
+        {0, 0, 0, 0, 0},
+        {3, 4, 1, 5, 4},
+        {2, 3, 4, 1, 1}
     };
 
     for (int i = 0; i < mapHeight; ++i) {
@@ -427,9 +487,9 @@ int main()
         glLineWidth(10);
         glPointSize(20);
 
-        for(const auto &row : map) {
-            for(const auto &tile : row) {
-                draw(tile);
+       for(size_t i = 0; i < map.size(); ++i) {
+            for(size_t j = 0; j < map[i].size(); ++j) {
+                draw(map[i][j], i, j);
             }
         }
 
