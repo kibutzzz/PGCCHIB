@@ -274,12 +274,12 @@ int setupGeometry()
     // Cada atributo do vértice (coordenada, cores, coordenadas de textura, normal, etc)
     // Pode ser arazenado em um VBO único ou em VBOs separados
     GLfloat vertices[] = {
-        // x      y      z      r     g      b      s      t
+        // x      y      z      r     g      b      s           t
         // T0
-        calcIsoX(1.0,    1.0), calcIsoY(1.0,    1.0),    0.0,   0.0,  0.0,   0.0,   1.0/7.0,   1.0,   
-        calcIsoX(0.0,   0.0), calcIsoY(0.0,   0.0),     0.0,   0.0,  0.0,   0.0,   0.0,      0.0,
-        calcIsoX(0.0,   1.0), calcIsoY(0.0,   1.0),     0.0,   0.0,  0.0,   0.0,   0.0,   1.0,    
-        calcIsoX(1.0,    0.0), calcIsoY(1.0,    0.0),    0.0,   0.0,  0.0,   0.0,   1.0/7.0,   0.0,
+        0.0,     0.5,    0.0,   0.0,  0.0,   0.0,   0.0,       0.5,   
+        0.5,     1.0,    0.0,   0.0,  0.0,   0.0,   1.0/14.0,  1.0,
+        1.0,     0.5,    0.0,   0.0,  0.0,   0.0,   1.0/7.0,   0.5,    
+        0.5,     0.0,    0.0,   0.0,  0.0,   0.0,   1.0/14.0,  0.0,
     };
 
     GLuint VBO, VAO;
@@ -323,7 +323,7 @@ int setupGeometry()
 
     unsigned int indices[] = {
         0, 1, 2, // Primeiro triângulo
-        0, 1, 3  // Segundo triângulo
+        0, 2, 3  // Segundo triângulo
     };
 
     GLuint EBO;
@@ -404,15 +404,10 @@ int main()
         for (int j = 0; j < mapWidth; ++j) {
             Sprite tile = jorge;
 
-            // Posição cartesiana
-            float cartX = j * tile.scale.x;
-            float cartY = i * tile.scale.y;
+            float x = j * tile.scale.x / 2.0f + i * tile.scale.y / 2.0f;
+            float y = i * tile.scale.x / 2.0f - j * tile.scale.y / 2.0f;
 
-            // Conversão para coordenadas isométricas
-            float isoX = cartX - cartY;
-            float isoY = (cartX + cartY) / 2;
-
-            tile.translate = glm::vec3(isoX + WIDTH / 2.0f, isoY, 0.0f);
+            tile.translate = glm::vec3(x + WIDTH / 4.0f, y + HEIGHT / 4.0f, 0.0f);
             tile.frameIndex = mapData[i][j];
             row.push_back(tile);
         }
