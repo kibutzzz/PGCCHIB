@@ -487,8 +487,6 @@ std::vector<int> extrairValores(const std::string& linha) {
 int main()
 {
 
-    
-
     initializeGlfw();
     setupGlConfiguration();
 
@@ -501,8 +499,7 @@ int main()
 
     GLuint VAO = setupGeometry();
 
-    std::cout << "Jogo das Cores - Módulo 3 - Leonardo Meinerz Ramos" << std::endl;
-
+    std::cout << "Trabalho GB - Benjamin Vichel, Leonardo Ramos e Lucas Kappes" << std::endl;
 
     std::string arquivo = lerArquivoParaString("../assets/maps/map15x15.txt");
     std::cout << "Conteúdo do arquivo lido: " << arquivo << std::endl;
@@ -525,7 +522,6 @@ int main()
     jorge.shaderId = shaderId;
     float size = HEIGHT/mapHeight;
     jorge.scale = glm::vec3(size, size, 1.0f);
-    // jorge.translate = glm::vec3(0.0f, HEIGHT/2.0, 0.0f);
 
     std::vector<std::vector<Sprite>> map;
 
