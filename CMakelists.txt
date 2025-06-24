@@ -64,6 +64,7 @@ set(EXERCISES
     JogoDasCores/jogoDasCores
     Paralaxe/paralaxe
     VivencialM6/VivencialM6
+    TrabalhoGB/TrabalhoGB
 )
 
 add_compile_options(-Wno-pragmas)
