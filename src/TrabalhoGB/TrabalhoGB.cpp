@@ -21,6 +21,9 @@ const char *WINDOW_TITLE = "Vivencia M6";
 
 int playerX = 3;
 int playerY = 3;
+int mapWidth;
+int mapHeight;
+std::vector<std::vector<int>> mapData;
 
 // initial setup (GLAD, GL hints and window configuration)
 void setupGlConfiguration()
@@ -242,61 +245,62 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
     {
         switch (key)
         {
-        case GLFW_KEY_W: // up
-            if (playerX > 0 && playerY < 4)
+        case GLFW_KEY_W:
+            if(playerX > 0 && playerY > 0)
             {
-                playerX--;
-                playerY++;
+            playerX--;
+            playerY--;
             }
             std::cout << "direção: W (up) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_X: // down
-            if (playerX < 4 && playerY > 0)
+            if (playerX < mapWidth -1 && playerY < mapHeight -1)
             {
                 playerX++;
-                playerY--;
+                playerY++;
             }
             std::cout << "direção: X (down) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_A: // left
-            if (playerX > 0 && playerY > 0)
+            if (playerX < mapWidth -1 && playerY > 0)
             {
-                playerX--;
+                playerX++;
                 playerY--;
             }
             std::cout << "direção: A (left) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_D: // right
-            if (playerX < 4 && playerY < 4)
+            if (playerX > 0 && playerY < mapHeight-1)
             {
-                playerX++;
+                playerX--;
                 playerY++;
             }
             std::cout << "direção: D (right) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_Q: // up-left
 
-            if (playerX > 0)
-                playerX--;
+            if (playerY > 0)
+                playerY--;
             std::cout << "direção: Q (up-left) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_E: // up-right
 
-            if (playerY < 4)
-                playerY++;
+            if ( playerX > 0) {
+                playerX--;
+            }
 
             std::cout << "direção: E (up-right) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_Z: // down-left
-            if (playerY > 0)
-                playerY--;
+            if (playerX < mapWidth -1)
+                playerX++;
 
             std::cout << "direção: Z (down-left) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
         case GLFW_KEY_C: // down-right
 
-            if (playerX < 4)
-                playerX++;
+            if (playerY < mapHeight - 1)
+                playerY++;
 
             std::cout << "direção: C (down-right) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             break;
@@ -484,6 +488,36 @@ std::vector<int> extrairValores(const std::string& linha) {
     return valores;
 }
 
+void loadMap() {
+
+    std::string arquivo = lerArquivoParaString("../assets/maps/map15x15.txt");
+    std::cout << "Conteúdo do arquivo lido: " << arquivo << std::endl;
+    std::vector<std::string> linhas = split(arquivo, '\n');
+    std::vector<int> tamanhoMapa = extrairValores(linhas[0]);
+
+    std::cout << "Tamanho do mapa: " << tamanhoMapa[0] << "x" << tamanhoMapa[1] << std::endl;
+    mapWidth = tamanhoMapa[0];
+    mapHeight = tamanhoMapa[1];
+
+    mapData.resize(mapHeight, std::vector<int>(mapWidth, 0));
+    for (int i = 1; i < linhas.size(); ++i)
+    {
+        std::vector<int> valoresLinha = extrairValores(linhas[i]);
+        if (valoresLinha.size() == mapWidth)
+        {
+            for (int j = 0; j < mapWidth; ++j)
+            {
+                mapData[i - 1][j] = valoresLinha[j];
+            }
+        }
+        else
+        {
+            std::cerr << "Erro: Linha " << i << " tem tamanho diferente do esperado." << std::endl;
+        }
+    }
+
+}
+
 int main()
 {
 
@@ -501,49 +535,25 @@ int main()
 
     std::cout << "Trabalho GB - Benjamin Vichel, Leonardo Ramos e Lucas Kappes" << std::endl;
 
-    std::string arquivo = lerArquivoParaString("../assets/maps/map15x15.txt");
-    std::cout << "Conteúdo do arquivo lido: " << arquivo << std::endl;
-    std::vector<std::string> linhas = split(arquivo, '\n');
-    std::vector<int> tamanhoMapa = extrairValores(linhas[0]);
-
-    std::cout << "Tamanho do mapa: " << tamanhoMapa[0] << "x" << tamanhoMapa[1] << std::endl;
-    int mapWidth = tamanhoMapa[0];
-    int mapHeight = tamanhoMapa[1];
-
     glm::mat4 projection = glm::ortho(0.0f, (float)WIDTH, (float)HEIGHT, 0.0f, -1.0f, 1.0f);
     glUniformMatrix4fv(glGetUniformLocation(shaderId, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
     std::cout << "Matriz de projeção definida!" << std::endl;
 
     GLuint texID = loadTexture("../assets/sprites/tilesetIso.png");
 
+
+    loadMap();
     Sprite jorge = Sprite();
     jorge.VAO = VAO;
     jorge.textureId = texID;
     jorge.shaderId = shaderId;
-    float size = HEIGHT/mapHeight;
-    jorge.scale = glm::vec3(size, size, 1.0f);
+    float tileW = WIDTH/mapWidth;
+    float tileH = tileW / 2.0f; // altura = metade da largura
+    jorge.scale = glm::vec3(tileW, tileH, 1.0f);
 
     std::vector<std::vector<Sprite>> map;
 
-   
-
-    std::vector<std::vector<int>> mapData(mapHeight, std::vector<int>(mapWidth, 0));
-    for (int i = 1; i < linhas.size(); ++i)
-    {
-        std::vector<int> valoresLinha = extrairValores(linhas[i]);
-        if (valoresLinha.size() == mapWidth)
-        {
-            for (int j = 0; j < mapWidth; ++j)
-            {
-                mapData[i - 1][j] = valoresLinha[j];
-            }
-        }
-        else
-        {
-            std::cerr << "Erro: Linha " << i << " tem tamanho diferente do esperado." << std::endl;
-        }
-    }
-
+    float sobraAltura = WIDTH - (HEIGHT / 2.0f);
     for (int i = 0; i < mapHeight; ++i)
     {
         std::vector<Sprite> row;
@@ -551,10 +561,11 @@ int main()
         {
             Sprite tile = jorge;
 
-            float x = j * tile.scale.x / 2.0f + i * tile.scale.y / 2.0f;
-            float y = i * tile.scale.x / 2.0f - j * tile.scale.y / 2.0f;
-
-            tile.translate = glm::vec3(x, y + HEIGHT/2 - size/2, 0.0f);
+            // float x = j * tile.scale.x / 2.0f + i * tile.scale.y / 2.0f;
+            // float y = i * tile.scale.x / 2.0f - j * tile.scale.y / 2.0f;
+            float x = (j - i) * (tileW / 2.0f);
+            float y = (i + j) * (tileH / 2.0f);
+            tile.translate = glm::vec3(x + WIDTH/2 - tileW/2, y + sobraAltura/4, 0.0f);
             tile.frameIndex = mapData[i][j];
             row.push_back(tile);
         }
