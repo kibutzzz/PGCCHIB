@@ -17,6 +17,8 @@
 
 const GLuint WIDTH = 800;
 const GLuint HEIGHT = 600;
+
+const int FPS = 6;
 const char *WINDOW_TITLE = "Vivencia M6";
 
 int playerX = 3;
@@ -538,7 +540,9 @@ void drawTiles(const Sprite &sprite, int x, int y)
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
-int bla = 0;
+double currentTime;
+double lastTime = 0.0;
+int currentPlayerFrameIndex = 0;
 void drawPlayer(const Sprite &sprite)
 {
     glUseProgram(sprite.shaderId);
@@ -552,12 +556,18 @@ void drawPlayer(const Sprite &sprite)
     model = glm::scale(model, sprite.scale);
 
     glUniformMatrix4fv(glGetUniformLocation(sprite.shaderId, "model"), 1, GL_FALSE, glm::value_ptr(model));
-    glUniform2i(glGetUniformLocation(sprite.shaderId, "sheetSize"), 7,4); // 14 frames in the sprite sheet
-    glUniform1i(glGetUniformLocation(sprite.shaderId, "frameIndex"),bla++%7); // frame index for player
+    glUniform2i(glGetUniformLocation(sprite.shaderId, "sheetSize"), 7,4); 
+    glUniform1i(glGetUniformLocation(sprite.shaderId, "frameIndex"),currentPlayerFrameIndex); // frame index for player
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    currentTime = glfwGetTime();
+    if (currentTime - lastTime >= 1.0 / FPS) {
+        currentPlayerFrameIndex = (currentPlayerFrameIndex + 1) % 7;
+        lastTime = currentTime;
+    }
 }
 
 std::vector<std::string> split(const std::string& texto, char delimitador) {
