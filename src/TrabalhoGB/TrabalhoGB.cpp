@@ -187,7 +187,60 @@ void assertProgramLinkingStatus(GLuint shaderProgram)
     }
 }
 
-GLuint createShaderProgram()
+GLuint createPlayerShaderProgram() {
+    const GLuint vertexShader = createShader(R"(#version 400
+        layout (location = 0) in vec3 position;
+        layout (location = 1) in vec3 colors;
+        layout (location = 2) in vec2 texture_mapping;
+        
+        out vec2 texture_coordinates;
+        out vec3 color_values;
+        
+        uniform mat4 projection;
+        uniform mat4 model;
+        
+        uniform ivec2 sheetSize;   
+        uniform int frameIndex;
+        
+        void main()
+        {
+            int column = frameIndex % sheetSize.x;
+            int row    = frameIndex / sheetSize.x;
+            vec2 cellSize = vec2(1.0) / vec2(sheetSize);
+            vec2 frameOffset = vec2(column, row) * cellSize;
+            texture_coordinates = texture_mapping * cellSize + frameOffset;
+            color_values = colors;
+            gl_Position = projection * model * vec4(position, 1.0);
+        })",
+                                             GL_VERTEX_SHADER);
+
+    const GLuint fragmentShader = createShader(R"(#version 400
+        in vec2 texture_coordinates;
+        in vec3 color_values;
+        out vec4 color;
+        
+        uniform sampler2D spriteTexture;
+        
+        void main()
+        {
+            vec4 texColor = texture(spriteTexture, texture_coordinates);
+            color = texColor;
+        }
+        )",
+                                               GL_FRAGMENT_SHADER);
+
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    checkOpenGLError("Shader Program Linking");
+    assertProgramLinkingStatus(shaderProgram);
+
+    std::cout << "Shader program criado e vinculado com sucesso!" << std::endl;
+    return shaderProgram;
+}
+
+GLuint createTileShaderProgram()
 {
     const GLuint vertexShader = createShader(R"(
         #version 400
@@ -203,7 +256,7 @@ GLuint createShaderProgram()
         void main()
         {
             vColor = color;
-            tex_coord = vec2(texc.x + float(frameIndex) * 0.142857, texc.y); // Assuming 7 frames in the texture atlas
+            tex_coord = vec2(texc.x + float(frameIndex) * 0.142857, texc.y);
             gl_Position = projection * model * vec4(position, 1.0);
         }
         )",
@@ -360,13 +413,53 @@ GLfloat calcIsoY(float x, float y)
 {
     return (x + y) / 2;
 }
-int setupGeometry()
+
+GLuint setupPlayerVAO() {
+
+     GLfloat vertices[] = {
+        // x      y      z      r    g    b      s           t
+        // T0
+        0.0,    0.0,    0.0,    0.0, 0.0, 0.0,  0.0,    0.0,                //
+        0.0,    1.0,    0.0,    0.0, 0.0, 0.0,  0.0,    1.0 ,       //
+        1.0,    0.0,    0.0,    0.0, 0.0, 0.0,  1.0,    0.0,      //
+        1.0,    1.0,    0.0,    0.0, 0.0, 0.0,  1.0,    1.0,       //
+    };
+
+    GLuint VBO, VAO;
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid *)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid *)(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid *)(6 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(2);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    unsigned int indices[] = {
+        0, 1, 2, // Primeiro triângulo
+        1, 2, 3  // Segundo triângulo
+    };
+
+    GLuint EBO;
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+    return VAO;
+}
+int setupTileVAO()
 {
 
-    // Aqui setamos as coordenadas x, y e z do triângulo e as armazenamos de forma
-    // sequencial, já visando mandar para o VBO (Vertex Buffer Objects)
-    // Cada atributo do vértice (coordenada, cores, coordenadas de textura, normal, etc)
-    // Pode ser arazenado em um VBO único ou em VBOs separados
     GLfloat vertices[] = {
         // x      y      z      r    g    b      s           t
         // T0
@@ -377,43 +470,25 @@ int setupGeometry()
     };
 
     GLuint VBO, VAO;
-    // Geração do identificador do VBO
     glGenBuffers(1, &VBO);
-    // Faz a conexão (vincula) do buffer como um buffer de array
+    
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // Envia os dados do array de floats para o buffer da OpenGl
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    // Geração do identificador do VAO (Vertex Array Object)
     glGenVertexArrays(1, &VAO);
-    // Vincula (bind) o VAO primeiro, e em seguida  conecta e seta o(s) buffer(s) de vértices
-    // e os ponteiros para os atributos
     glBindVertexArray(VAO);
-    // Para cada atributo do vertice, criamos um "AttribPointer" (ponteiro para o atributo), indicando:
-    //  Localização no shader * (a localização dos atributos devem ser correspondentes no layout especificado no vertex shader)
-    //  Numero de valores que o atributo tem (por ex, 3 coordenadas xyz)
-    //  Tipo do dado
-    //  Se está normalizado (entre zero e um)
-    //  Tamanho em bytes
-    //  Deslocamento a partir do byte zero
 
-    // Ponteiro pro atributo 0 - Posição - coordenadas x, y, z
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid *)0);
     glEnableVertexAttribArray(0);
 
-    // Ponteiro pro atributo 1 - Cor - componentes r,g e b
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid *)(3 * sizeof(GLfloat)));
     glEnableVertexAttribArray(1);
 
-    // Ponteiro pro atributo 2 - Coordenada de textura - coordenadas s,t
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid *)(6 * sizeof(GLfloat)));
     glEnableVertexAttribArray(2);
 
-    // Observe que isso é permitido, a chamada para glVertexAttribPointer registrou o VBO como o objeto de buffer de vértice
-    // atualmente vinculado - para que depois possamos desvincular com segurança
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    // Desvincula o VAO (é uma boa prática desvincular qualquer buffer ou array para evitar bugs medonhos)
 
     unsigned int indices[] = {
         0, 1, 2, // Primeiro triângulo
@@ -444,8 +519,10 @@ bool isPlayerPosition(int x, int y)
     return (x == playerX && y == playerY);
 }
 
-void draw(const Sprite &sprite, int x, int y)
+void drawTiles(const Sprite &sprite, int x, int y)
 {
+    glUseProgram(sprite.shaderId);
+
     glBindTexture(GL_TEXTURE_2D, sprite.textureId);
     glBindVertexArray(sprite.VAO);
 
@@ -457,6 +534,27 @@ void draw(const Sprite &sprite, int x, int y)
     int frameIndex = isPlayerPosition(x, y) ? 6 : sprite.frameIndex;
 
     glUniform1i(glGetUniformLocation(sprite.shaderId, "frameIndex"), frameIndex);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+int bla = 0;
+void drawPlayer(const Sprite &sprite)
+{
+    glUseProgram(sprite.shaderId);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBindTexture(GL_TEXTURE_2D, sprite.textureId);
+    glBindVertexArray(sprite.VAO);
+
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, sprite.translate);
+    model = glm::scale(model, sprite.scale);
+
+    glUniformMatrix4fv(glGetUniformLocation(sprite.shaderId, "model"), 1, GL_FALSE, glm::value_ptr(model));
+    glUniform2i(glGetUniformLocation(sprite.shaderId, "sheetSize"), 7,4); // 14 frames in the sprite sheet
+    glUniform1i(glGetUniformLocation(sprite.shaderId, "frameIndex"),bla++%7); // frame index for player
+
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -520,36 +618,41 @@ void loadMap() {
 
 int main()
 {
-
+    std::cout << "Trabalho GB - Benjamin Vichel, Leonardo Ramos e Lucas Kappes" << std::endl;
     initializeGlfw();
     setupGlConfiguration();
 
     GLFWwindow *window = makeWindow(WIDTH, HEIGHT, WINDOW_TITLE);
-
-    GLuint shaderId = createShaderProgram();
-    glUseProgram(shaderId);
-
     glfwSetKeyCallback(window, keyCallback);
 
-    GLuint VAO = setupGeometry();
+    GLuint tileShaderId = createTileShaderProgram();
 
-    std::cout << "Trabalho GB - Benjamin Vichel, Leonardo Ramos e Lucas Kappes" << std::endl;
-
-    glm::mat4 projection = glm::ortho(0.0f, (float)WIDTH, (float)HEIGHT, 0.0f, -1.0f, 1.0f);
-    glUniformMatrix4fv(glGetUniformLocation(shaderId, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    glm::mat4 orthProjection = glm::ortho(0.0f, (float)WIDTH, (float)HEIGHT, 0.0f, -1.0f, 1.0f);
+    glUseProgram(tileShaderId);
+    glUniformMatrix4fv(glGetUniformLocation(tileShaderId, "projection"), 1, GL_FALSE, glm::value_ptr(orthProjection));
     std::cout << "Matriz de projeção definida!" << std::endl;
 
-    GLuint texID = loadTexture("../assets/sprites/tilesetIso.png");
-
+    GLuint playerShaderId = createPlayerShaderProgram();
+    GLuint playerVAO = setupPlayerVAO();
+    glUseProgram(playerShaderId);
+    glUniformMatrix4fv(glGetUniformLocation(playerShaderId, "projection"), 1, GL_FALSE, glm::value_ptr(orthProjection));
 
     loadMap();
-    Sprite jorge = Sprite();
-    jorge.VAO = VAO;
-    jorge.textureId = texID;
-    jorge.shaderId = shaderId;
+
+    Sprite player = Sprite();
+    player.VAO = playerVAO;
+    player.textureId = loadTexture("../assets/sprites/jorge.png");
+    player.shaderId = playerShaderId;
+    player.scale = glm::vec3(300.0f, 300.0f, 1.0f);
+    player.translate = glm::vec3(200.0f, 200.0f, 0.0f);
+
+    Sprite tileSprite = Sprite();
+    tileSprite.VAO = setupTileVAO();
+    tileSprite.textureId = loadTexture("../assets/sprites/tilesetIso.png");
+    tileSprite.shaderId = tileShaderId;
     float tileW = WIDTH/mapWidth;
     float tileH = tileW / 2.0f; // altura = metade da largura
-    jorge.scale = glm::vec3(tileW, tileH, 1.0f);
+    tileSprite.scale = glm::vec3(tileW, tileH, 1.0f);
 
     std::vector<std::vector<Sprite>> map;
 
@@ -559,10 +662,8 @@ int main()
         std::vector<Sprite> row;
         for (int j = 0; j < mapWidth; ++j)
         {
-            Sprite tile = jorge;
+            Sprite tile = tileSprite;
 
-            // float x = j * tile.scale.x / 2.0f + i * tile.scale.y / 2.0f;
-            // float y = i * tile.scale.x / 2.0f - j * tile.scale.y / 2.0f;
             float x = (j - i) * (tileW / 2.0f);
             float y = (i + j) * (tileH / 2.0f);
             tile.translate = glm::vec3(x + WIDTH/2 - tileW/2, y + sobraAltura/4, 0.0f);
@@ -586,9 +687,10 @@ int main()
         {
             for (size_t j = 0; j < map[i].size(); ++j)
             {
-                draw(map[i][j], i, j);
+                drawTiles(map[i][j], i, j);
             }
         }
+        drawPlayer(player);
 
         glBindVertexArray(0);
 
