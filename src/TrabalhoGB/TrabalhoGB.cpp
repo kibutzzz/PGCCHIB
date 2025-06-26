@@ -18,7 +18,7 @@
 const GLuint WIDTH = 800;
 const GLuint HEIGHT = 600;
 
-const int FPS = 6;
+const int FPS = 12;
 const char *WINDOW_TITLE = "Vivencia M6";
 
 int playerX = 3;
@@ -288,6 +288,19 @@ GLuint createTileShaderProgram()
     return shaderProgram;
 }
 
+double currentTime;
+double lastTime = 0.0;
+int currentPlayerFrameIndex = 0;
+bool isWalking = false;
+int UP = 0;
+int DOWN = 1;
+int LEFT = 2;
+int RIGHT = 3;
+int walkinDirection;
+
+void resetWalkingAnimation () {
+    isWalking = false;
+}
 // callbacks
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
@@ -295,9 +308,13 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
     {
         glfwSetWindowShouldClose(window, GL_TRUE);
     }
-    // use qweadzxc to move player
+
+    if( action == GLFW_RELEASE) {
+        resetWalkingAnimation();   
+    }
     if (action == GLFW_PRESS)
     {
+        isWalking = true;
         switch (key)
         {
         case GLFW_KEY_W:
@@ -307,6 +324,7 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
             playerY--;
             }
             std::cout << "direção: W (up) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
+            walkinDirection = UP;
             break;
         case GLFW_KEY_X: // down
             if (playerX < mapWidth -1 && playerY < mapHeight -1)
@@ -315,6 +333,7 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
                 playerY++;
             }
             std::cout << "direção: X (down) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
+            walkinDirection = DOWN;
             break;
         case GLFW_KEY_A: // left
             if (playerX < mapWidth -1 && playerY > 0)
@@ -323,6 +342,7 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
                 playerY--;
             }
             std::cout << "direção: A (left) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
+            walkinDirection = LEFT;
             break;
         case GLFW_KEY_D: // right
             if (playerX > 0 && playerY < mapHeight-1)
@@ -331,12 +351,14 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
                 playerY++;
             }
             std::cout << "direção: D (right) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
+            walkinDirection = RIGHT;
             break;
         case GLFW_KEY_Q: // up-left
 
             if (playerY > 0)
                 playerY--;
             std::cout << "direção: Q (up-left) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
+            walkinDirection = UP;
             break;
         case GLFW_KEY_E: // up-right
 
@@ -345,12 +367,14 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
             }
 
             std::cout << "direção: E (up-right) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
+            walkinDirection = UP;
             break;
         case GLFW_KEY_Z: // down-left
             if (playerX < mapWidth -1)
                 playerX++;
 
             std::cout << "direção: Z (down-left) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
+            walkinDirection = DOWN;
             break;
         case GLFW_KEY_C: // down-right
 
@@ -358,6 +382,7 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
                 playerY++;
 
             std::cout << "direção: C (down-right) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
+            walkinDirection = DOWN;
             break;
         default:
             break;
@@ -540,9 +565,7 @@ void drawTiles(const Sprite &sprite, int x, int y)
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
-double currentTime;
-double lastTime = 0.0;
-int currentPlayerFrameIndex = 0;
+
 void drawPlayer(const Sprite &sprite)
 {
     glUseProgram(sprite.shaderId);
@@ -562,9 +585,8 @@ void drawPlayer(const Sprite &sprite)
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
-
     currentTime = glfwGetTime();
-    if (currentTime - lastTime >= 1.0 / FPS) {
+    if (isWalking && currentTime - lastTime >= 1.0 / FPS) {
         currentPlayerFrameIndex = (currentPlayerFrameIndex + 1) % 7;
         lastTime = currentTime;
     }
