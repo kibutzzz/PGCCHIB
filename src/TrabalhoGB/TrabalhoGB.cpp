@@ -556,7 +556,7 @@ void drawPlayer(const Sprite &sprite)
     model = glm::scale(model, sprite.scale);
 
     glUniformMatrix4fv(glGetUniformLocation(sprite.shaderId, "model"), 1, GL_FALSE, glm::value_ptr(model));
-    glUniform2i(glGetUniformLocation(sprite.shaderId, "sheetSize"), 7,4); 
+    glUniform2i(glGetUniformLocation(sprite.shaderId, "sheetSize"), 6,4); 
     glUniform1i(glGetUniformLocation(sprite.shaderId, "frameIndex"),currentPlayerFrameIndex); // frame index for player
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
