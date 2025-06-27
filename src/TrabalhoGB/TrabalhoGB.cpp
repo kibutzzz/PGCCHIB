@@ -292,10 +292,10 @@ double currentTime;
 double lastTime = 0.0;
 int currentPlayerFrameIndex = 0;
 bool isWalking = false;
-int UP = 0;
-int DOWN = 1;
-int LEFT = 2;
-int RIGHT = 3;
+int DOWN = 0;
+int LEFT = 1;
+int RIGHT = 2;
+int UP = 3;
 int walkinDirection;
 
 void resetWalkingAnimation () {
@@ -587,7 +587,7 @@ void drawPlayer(const Sprite &sprite)
     glBindTexture(GL_TEXTURE_2D, 0);
     currentTime = glfwGetTime();
     if (isWalking && currentTime - lastTime >= 1.0 / FPS) {
-        currentPlayerFrameIndex = (currentPlayerFrameIndex + 1) % 7;
+        currentPlayerFrameIndex = (currentPlayerFrameIndex + 1) % 6 + walkinDirection * 6; 
         lastTime = currentTime;
     }
 }
@@ -675,7 +675,7 @@ int main()
     player.VAO = playerVAO;
     player.textureId = loadTexture("../assets/sprites/jorge.png");
     player.shaderId = playerShaderId;
-    player.scale = glm::vec3(300.0f, 300.0f, 1.0f);
+    player.scale = glm::vec3(150.0f, 150.0f, 1.0f);
     player.translate = glm::vec3(200.0f, 200.0f, 0.0f);
 
     Sprite tileSprite = Sprite();
