@@ -21,10 +21,11 @@ const GLuint HEIGHT = 600;
 const int FPS = 12;
 const char *WINDOW_TITLE = "Vivencia M6";
 
-int playerX = 3;
-int playerY = 3;
+int playerX = 1;
+int playerY = 1;
 int mapWidth;
 int mapHeight;
+float playerSize = 1;
 std::vector<std::vector<int>> mapData;
 
 // initial setup (GLAD, GL hints and window configuration)
@@ -323,7 +324,6 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
             playerX--;
             playerY--;
             }
-            std::cout << "direção: W (up) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             walkinDirection = UP;
             break;
         case GLFW_KEY_X: // down
@@ -332,7 +332,6 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
                 playerX++;
                 playerY++;
             }
-            std::cout << "direção: X (down) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             walkinDirection = DOWN;
             break;
         case GLFW_KEY_A: // left
@@ -341,7 +340,6 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
                 playerX++;
                 playerY--;
             }
-            std::cout << "direção: A (left) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             walkinDirection = LEFT;
             break;
         case GLFW_KEY_D: // right
@@ -350,14 +348,12 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
                 playerX--;
                 playerY++;
             }
-            std::cout << "direção: D (right) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             walkinDirection = RIGHT;
             break;
         case GLFW_KEY_Q: // up-left
 
             if (playerY > 0)
                 playerY--;
-            std::cout << "direção: Q (up-left) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             walkinDirection = UP;
             break;
         case GLFW_KEY_E: // up-right
@@ -366,14 +362,12 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
                 playerX--;
             }
 
-            std::cout << "direção: E (up-right) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             walkinDirection = UP;
             break;
         case GLFW_KEY_Z: // down-left
             if (playerX < mapWidth -1)
                 playerX++;
 
-            std::cout << "direção: Z (down-left) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             walkinDirection = DOWN;
             break;
         case GLFW_KEY_C: // down-right
@@ -381,7 +375,6 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
             if (playerY < mapHeight - 1)
                 playerY++;
 
-            std::cout << "direção: C (down-right) - Posição atual: (" << playerX << ", " << playerY << ")" << std::endl;
             walkinDirection = DOWN;
             break;
         default:
@@ -554,6 +547,7 @@ void drawTiles(const Sprite &sprite, int x, int y)
     glBindVertexArray(sprite.VAO);
 
     glm::mat4 model = glm::mat4(1.0f);
+    
     model = glm::translate(model, sprite.translate);
     model = glm::scale(model, sprite.scale);
 
@@ -575,7 +569,15 @@ void drawPlayer(const Sprite &sprite)
     glBindVertexArray(sprite.VAO);
 
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, sprite.translate);
+    float tileW = WIDTH / mapWidth;
+    float tileH = tileW / 2.0f;
+    float sobraAltura = WIDTH - (HEIGHT / 2.0f);
+
+    float x = (playerY - playerX) * (tileW / 2.0f); 
+    float y = (playerY + playerX) * (tileH / 2.0f);
+    glm::vec3 playerPos = glm::vec3(x + WIDTH/2 - tileW/1.8, y + playerSize* 1.5, 0.0f); // Precisa ser corrigido de acordo com o tamanho dos tiles.
+
+    model = glm::translate(model, playerPos);
     model = glm::scale(model, sprite.scale);
 
     glUniformMatrix4fv(glGetUniformLocation(sprite.shaderId, "model"), 1, GL_FALSE, glm::value_ptr(model));
@@ -589,6 +591,7 @@ void drawPlayer(const Sprite &sprite)
     if (isWalking && currentTime - lastTime >= 1.0 / FPS) {
         currentPlayerFrameIndex = (currentPlayerFrameIndex + 1) % 6 + walkinDirection * 6; 
         lastTime = currentTime;
+        std::cout << "X: " << playerX << ", Y: " << playerY << ", Frame Index: " << currentPlayerFrameIndex << std::endl;
     }
 }
 
@@ -628,6 +631,7 @@ void loadMap() {
     std::cout << "Tamanho do mapa: " << tamanhoMapa[0] << "x" << tamanhoMapa[1] << std::endl;
     mapWidth = tamanhoMapa[0];
     mapHeight = tamanhoMapa[1];
+    playerSize = (float)1000 / mapWidth; 
 
     mapData.resize(mapHeight, std::vector<int>(mapWidth, 0));
     for (int i = 1; i < linhas.size(); ++i)
@@ -675,7 +679,7 @@ int main()
     player.VAO = playerVAO;
     player.textureId = loadTexture("../assets/sprites/jorge.png");
     player.shaderId = playerShaderId;
-    player.scale = glm::vec3(150.0f, 150.0f, 1.0f);
+    player.scale = glm::vec3(playerSize, playerSize, 1.0f);
     player.translate = glm::vec3(200.0f, 200.0f, 0.0f);
 
     Sprite tileSprite = Sprite();
