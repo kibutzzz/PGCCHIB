@@ -792,7 +792,7 @@ int main()
 
     Sprite key = Sprite();
     key.VAO = setupKeyVAO();
-    key.textureId = loadTexture("../assets/sprites/key.png");
+    key.textureId = loadTexture("../assets/sprites/coin.png");
     key.shaderId = tileShaderId;
     key.scale = glm::vec3(tileW, tileH, 1.0f);
 
