@@ -4,7 +4,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
-#include "../../build/_deps/stb_image-src/stb_easy_font.h"
 #include <string>
 #include <vector>
 #include <fstream>
@@ -27,6 +26,8 @@ int mapWidth;
 int mapHeight;
 float playerSize = 1;
 std::vector<std::vector<int>> mapData;
+std::vector<std::pair<int, int>> objectives; // pares de coordenadas com os objetivos que devem ser coletados
+int score = 0;
 
 // initial setup (GLAD, GL hints and window configuration)
 void setupGlConfiguration()
@@ -43,22 +44,26 @@ void setupGlConfiguration()
     std::cout << "Configuração do OpenGL definida com sucesso!" << std::endl;
 }
 
-std::string lerArquivoParaString(const std::string& caminhoArquivo) {
-    try {
+std::string lerArquivoParaString(const std::string &caminhoArquivo)
+{
+    try
+    {
         std::ifstream arquivo(caminhoArquivo);
-        if (!arquivo.is_open()) {
+        if (!arquivo.is_open())
+        {
             throw std::runtime_error("Não foi possível abrir o arquivo: " + caminhoArquivo);
         }
 
         std::ostringstream conteudoStream;
         conteudoStream << arquivo.rdbuf(); // Lê todo o conteúdo do arquivo
         return conteudoStream.str();
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception &e)
+    {
         std::cerr << "Erro ao ler o arquivo: " << e.what() << std::endl;
-        throw; 
+        throw;
     }
 }
-
 
 void setViewportDimensions(GLFWwindow *window)
 {
@@ -159,7 +164,7 @@ void assertShaderCompilationStatus(GLuint shader)
     }
 }
 
-GLuint createShader(GLchar *shaderSource, GLenum shaderType)
+GLuint createShader(const char *shaderSource, GLenum shaderType)
 {
     GLuint shader = glCreateShader(shaderType);
     if (!shader)
@@ -190,7 +195,8 @@ void assertProgramLinkingStatus(GLuint shaderProgram)
     }
 }
 
-GLuint createPlayerShaderProgram() {
+GLuint createPlayerShaderProgram()
+{
     const GLuint vertexShader = createShader(R"(#version 400
         layout (location = 0) in vec3 position;
         layout (location = 1) in vec3 colors;
@@ -298,8 +304,23 @@ int LEFT = 1;
 int RIGHT = 2;
 int UP = 3;
 int walkinDirection;
+GLFWwindow *window;
 
-void resetWalkingAnimation () {
+void gameOver()
+{
+    std::cout << "Jorge foi de base!" << std::endl;
+    std::cout << "Pontuação final: " << score << std::endl;
+    glfwSetWindowShouldClose(window, GLFW_TRUE);
+}
+
+void gameWon()
+{
+    std::cout << "Jorge é mestre!" << std::endl;
+    glfwSetWindowShouldClose(window, GLFW_TRUE);
+}
+
+void resetWalkingAnimation()
+{
     isWalking = false;
 }
 // callbacks
@@ -310,8 +331,9 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         glfwSetWindowShouldClose(window, GL_TRUE);
     }
 
-    if( action == GLFW_RELEASE) {
-        resetWalkingAnimation();   
+    if (action == GLFW_RELEASE)
+    {
+        resetWalkingAnimation();
     }
     if (action == GLFW_PRESS)
     {
@@ -319,15 +341,15 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         switch (key)
         {
         case GLFW_KEY_W:
-            if(playerX > 0 && playerY > 0)
+            if (playerX > 0 && playerY > 0 && mapData.at(playerX - 1).at(playerY - 1) != 5)
             {
-            playerX--;
-            playerY--;
+                playerX--;
+                playerY--;
             }
             walkinDirection = UP;
             break;
         case GLFW_KEY_X: // down
-            if (playerX < mapWidth -1 && playerY < mapHeight -1)
+            if (playerX < mapWidth - 1 && playerY < mapHeight - 1 && mapData.at(playerX + 1).at(playerY + 1) != 5)
             {
                 playerX++;
                 playerY++;
@@ -335,7 +357,7 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
             walkinDirection = DOWN;
             break;
         case GLFW_KEY_A: // left
-            if (playerX < mapWidth -1 && playerY > 0)
+            if (playerX < mapWidth - 1 && playerY > 0 && mapData.at(playerX + 1).at(playerY - 1) != 5)
             {
                 playerX++;
                 playerY--;
@@ -343,7 +365,7 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
             walkinDirection = LEFT;
             break;
         case GLFW_KEY_D: // right
-            if (playerX > 0 && playerY < mapHeight-1)
+            if (playerX > 0 && playerY < mapHeight - 1 && mapData.at(playerX - 1).at(playerY + 1) != 5)
             {
                 playerX--;
                 playerY++;
@@ -352,33 +374,52 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
             break;
         case GLFW_KEY_Q: // up-left
 
-            if (playerY > 0)
+            if (playerY > 0 && mapData.at(playerX).at(playerY - 1) != 5)
                 playerY--;
             walkinDirection = UP;
             break;
         case GLFW_KEY_E: // up-right
 
-            if ( playerX > 0) {
+            if (playerX > 0 && mapData.at(playerX - 1).at(playerY) != 5)
+            {
                 playerX--;
             }
 
             walkinDirection = UP;
             break;
         case GLFW_KEY_Z: // down-left
-            if (playerX < mapWidth -1)
+            if (playerX < mapWidth - 1 && mapData.at(playerX + 1).at(playerY) != 5)
                 playerX++;
 
             walkinDirection = DOWN;
             break;
         case GLFW_KEY_C: // down-right
 
-            if (playerY < mapHeight - 1)
+            if (playerY < mapHeight - 1 && mapData.at(playerX).at(playerY + 1) != 5)
                 playerY++;
 
             walkinDirection = DOWN;
             break;
         default:
             break;
+        }
+        for (int i = 0; i < objectives.size(); ++i)
+        {
+            if (playerX == objectives[i].first && playerY == objectives[i].second)
+            {
+                score++;
+                std::cout << "Objetivo coletado! Pontuação: " << score << std::endl;
+                objectives.erase(objectives.begin() + i);
+                if (objectives.empty())
+                {
+                    gameWon();
+                }
+                break;
+            }
+        }
+        if (mapData.at(playerX).at(playerY) == 3)
+        {
+            gameOver();
         }
     }
 }
@@ -387,7 +428,7 @@ int loadTexture(std::string filePath)
 {
     GLuint texID;
 
-    // Gera o identificador da textura na memória
+    // Gera o identificador da textura na mem�ria
     glGenTextures(1, &texID);
     glBindTexture(GL_TEXTURE_2D, texID);
 
@@ -434,15 +475,16 @@ GLfloat calcIsoY(float x, float y)
     return (x + y) / 2;
 }
 
-GLuint setupPlayerVAO() {
+GLuint setupPlayerVAO()
+{
 
-     GLfloat vertices[] = {
+    GLfloat vertices[] = {
         // x      y      z      r    g    b      s           t
         // T0
-        0.0,    0.0,    0.0,    0.0, 0.0, 0.0,  0.0,    0.0,                //
-        0.0,    1.0,    0.0,    0.0, 0.0, 0.0,  0.0,    1.0 ,       //
-        1.0,    0.0,    0.0,    0.0, 0.0, 0.0,  1.0,    0.0,      //
-        1.0,    1.0,    0.0,    0.0, 0.0, 0.0,  1.0,    1.0,       //
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, //
+        0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, //
+        1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, //
+        1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, //
     };
 
     GLuint VBO, VAO;
@@ -465,8 +507,52 @@ GLuint setupPlayerVAO() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     unsigned int indices[] = {
-        0, 1, 2, // Primeiro triângulo
-        1, 2, 3  // Segundo triângulo
+        0, 1, 2, // Primeiro tri�ngulo
+        1, 2, 3  // Segundo tri�ngulo
+    };
+
+    GLuint EBO;
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+    return VAO;
+}
+
+GLuint setupKeyVAO()
+{
+    GLfloat vertices[] = {
+        // x      y      z      r    g    b      s           t
+        // T0
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, //
+        0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, //
+        1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, //
+        1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, //
+    };
+
+    GLuint VBO, VAO;
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid *)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid *)(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid *)(6 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(2);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    unsigned int indices[] = {
+        0, 1, 2, // Primeiro tri�ngulo
+        1, 2, 3  // Segundo tri�ngulo
     };
 
     GLuint EBO;
@@ -483,15 +569,15 @@ int setupTileVAO()
     GLfloat vertices[] = {
         // x      y      z      r    g    b      s           t
         // T0
-        0.0,    0.5,    0.0,    0.0, 0.0, 0.0,  0.0,        0.5,        //
-        0.5,    1.0,    0.0,    0.0, 0.0, 0.0,  1.0 / 14.0, 1.0,        //
-        1.0,    0.5,    0.0,    0.0, 0.0, 0.0,  1.0 / 7.0,  0.5,        //
-        0.5,    0.0,    0.0,    0.0, 0.0, 0.0,  1.0 / 14.0, 0.0,        //
+        0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5,        //
+        0.5, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 / 14.0, 1.0, //
+        1.0, 0.5, 0.0, 0.0, 0.0, 0.0, 1.0 / 7.0, 0.5,  //
+        0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 / 14.0, 0.0, //
     };
 
     GLuint VBO, VAO;
     glGenBuffers(1, &VBO);
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
@@ -509,10 +595,9 @@ int setupTileVAO()
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-
     unsigned int indices[] = {
-        0, 1, 2, // Primeiro triângulo
-        0, 2, 3  // Segundo triângulo
+        0, 1, 2, // Primeiro tri�ngulo
+        0, 2, 3  // Segundo tri�ngulo
     };
 
     GLuint EBO;
@@ -542,12 +627,13 @@ bool isPlayerPosition(int x, int y)
 void drawTiles(const Sprite &sprite, int x, int y)
 {
     glUseProgram(sprite.shaderId);
+    glEnable(GL_BLEND);
 
     glBindTexture(GL_TEXTURE_2D, sprite.textureId);
     glBindVertexArray(sprite.VAO);
 
     glm::mat4 model = glm::mat4(1.0f);
-    
+
     model = glm::translate(model, sprite.translate);
     model = glm::scale(model, sprite.scale);
 
@@ -573,55 +659,63 @@ void drawPlayer(const Sprite &sprite)
     float tileH = tileW / 2.0f;
     float sobraAltura = WIDTH - (HEIGHT / 2.0f);
 
-    float x = (playerY - playerX) * (tileW / 2.0f); 
+    float x = (playerY - playerX) * (tileW / 2.0f);
     float y = (playerY + playerX) * (tileH / 2.0f);
-    glm::vec3 playerPos = glm::vec3(x + WIDTH/2 - tileW/1.8, y + playerSize* 1.5, 0.0f); // Precisa ser corrigido de acordo com o tamanho dos tiles.
+    glm::vec3 playerPos = glm::vec3(x + WIDTH / 2 - tileW / 1.8, y + playerSize * 1.5, 0.0f); // Precisa ser corrigido de acordo com o tamanho dos tiles.
 
     model = glm::translate(model, playerPos);
     model = glm::scale(model, sprite.scale);
 
     glUniformMatrix4fv(glGetUniformLocation(sprite.shaderId, "model"), 1, GL_FALSE, glm::value_ptr(model));
-    glUniform2i(glGetUniformLocation(sprite.shaderId, "sheetSize"), 6,4); 
-    glUniform1i(glGetUniformLocation(sprite.shaderId, "frameIndex"),currentPlayerFrameIndex); // frame index for player
+    glUniform2i(glGetUniformLocation(sprite.shaderId, "sheetSize"), 6, 4);
+    glUniform1i(glGetUniformLocation(sprite.shaderId, "frameIndex"), currentPlayerFrameIndex); 
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
     currentTime = glfwGetTime();
-    if (isWalking && currentTime - lastTime >= 1.0 / FPS) {
-        currentPlayerFrameIndex = (currentPlayerFrameIndex + 1) % 6 + walkinDirection * 6; 
+    if (isWalking && currentTime - lastTime >= 1.0 / FPS)
+    {
+        currentPlayerFrameIndex = (currentPlayerFrameIndex + 1) % 6 + walkinDirection * 6;
         lastTime = currentTime;
-        std::cout << "X: " << playerX << ", Y: " << playerY << ", Frame Index: " << currentPlayerFrameIndex << std::endl;
     }
 }
 
-std::vector<std::string> split(const std::string& texto, char delimitador) {
+std::vector<std::string> split(const std::string &texto, char delimitador)
+{
     std::vector<std::string> partes;
     std::stringstream ss(texto);
     std::string item;
 
-    while (std::getline(ss, item, delimitador)) {
+    while (std::getline(ss, item, delimitador))
+    {
         partes.push_back(item);
     }
 
     return partes;
 }
 
-std::vector<int> extrairValores(const std::string& linha) {
+std::vector<int> extrairValores(const std::string &linha)
+{
     std::vector<int> valores;
     std::vector<std::string> partes = split(linha, ' ');
-    
-    for (const std::string& parte : partes) {
-        try {
+
+    for (const std::string &parte : partes)
+    {
+        try
+        {
             valores.push_back(std::stoi(parte));
-        } catch (const std::invalid_argument&) {
+        }
+        catch (const std::invalid_argument &)
+        {
         }
     }
 
     return valores;
 }
 
-void loadMap() {
+void loadMap()
+{
 
     std::string arquivo = lerArquivoParaString("../assets/maps/map15x15.txt");
     std::cout << "Conteúdo do arquivo lido: " << arquivo << std::endl;
@@ -631,7 +725,7 @@ void loadMap() {
     std::cout << "Tamanho do mapa: " << tamanhoMapa[0] << "x" << tamanhoMapa[1] << std::endl;
     mapWidth = tamanhoMapa[0];
     mapHeight = tamanhoMapa[1];
-    playerSize = (float)1000 / mapWidth; 
+    playerSize = (float)1000 / mapWidth;
 
     mapData.resize(mapHeight, std::vector<int>(mapWidth, 0));
     for (int i = 1; i < linhas.size(); ++i)
@@ -644,12 +738,18 @@ void loadMap() {
                 mapData[i - 1][j] = valoresLinha[j];
             }
         }
-        else
-        {
-            std::cerr << "Erro: Linha " << i << " tem tamanho diferente do esperado." << std::endl;
-        }
     }
 
+    arquivo = lerArquivoParaString("../assets/maps/objective_positions.txt");
+    linhas = split(arquivo, '\n');
+    for (const std::string &linha : linhas)
+    {
+        std::vector<int> valoresLinha = extrairValores(linha);
+        if (valoresLinha.size() >= 2)
+        {
+            objectives.push_back(std::make_pair(valoresLinha[0], valoresLinha[1]));
+        }
+    }
 }
 
 int main()
@@ -658,7 +758,7 @@ int main()
     initializeGlfw();
     setupGlConfiguration();
 
-    GLFWwindow *window = makeWindow(WIDTH, HEIGHT, WINDOW_TITLE);
+    window = makeWindow(WIDTH, HEIGHT, WINDOW_TITLE);
     glfwSetKeyCallback(window, keyCallback);
 
     GLuint tileShaderId = createTileShaderProgram();
@@ -666,7 +766,7 @@ int main()
     glm::mat4 orthProjection = glm::ortho(0.0f, (float)WIDTH, (float)HEIGHT, 0.0f, -1.0f, 1.0f);
     glUseProgram(tileShaderId);
     glUniformMatrix4fv(glGetUniformLocation(tileShaderId, "projection"), 1, GL_FALSE, glm::value_ptr(orthProjection));
-    std::cout << "Matriz de projeção definida!" << std::endl;
+    std::cout << "Matriz de proje��o definida!" << std::endl;
 
     GLuint playerShaderId = createPlayerShaderProgram();
     GLuint playerVAO = setupPlayerVAO();
@@ -686,9 +786,15 @@ int main()
     tileSprite.VAO = setupTileVAO();
     tileSprite.textureId = loadTexture("../assets/sprites/tilesetIso.png");
     tileSprite.shaderId = tileShaderId;
-    float tileW = WIDTH/mapWidth;
+    float tileW = WIDTH / mapWidth;
     float tileH = tileW / 2.0f; // altura = metade da largura
     tileSprite.scale = glm::vec3(tileW, tileH, 1.0f);
+
+    Sprite key = Sprite();
+    key.VAO = setupKeyVAO();
+    key.textureId = loadTexture("../assets/sprites/key.png");
+    key.shaderId = tileShaderId;
+    key.scale = glm::vec3(tileW, tileH, 1.0f);
 
     std::vector<std::vector<Sprite>> map;
 
@@ -702,7 +808,7 @@ int main()
 
             float x = (j - i) * (tileW / 2.0f);
             float y = (i + j) * (tileH / 2.0f);
-            tile.translate = glm::vec3(x + WIDTH/2 - tileW/2, y + sobraAltura/4, 0.0f);
+            tile.translate = glm::vec3(x + WIDTH / 2 - tileW / 2, y + sobraAltura / 4, 0.0f);
             tile.frameIndex = mapData[i][j];
             row.push_back(tile);
         }
@@ -726,6 +832,16 @@ int main()
                 drawTiles(map[i][j], i, j);
             }
         }
+
+        for (const auto &objective : objectives)
+        {
+            Sprite keySprite = key;
+            float x = (objective.second - objective.first) * (tileW / 2.0f);
+            float y = (objective.second + objective.first) * (tileH / 2.0f);
+            keySprite.translate = glm::vec3(x + WIDTH / 2 - tileW / 2, y + sobraAltura / 4, 0.0f);
+            drawTiles(keySprite, objective.first, objective.second);
+        }
+
         drawPlayer(player);
 
         glBindVertexArray(0);
